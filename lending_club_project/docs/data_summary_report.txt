@@ -1,0 +1,50 @@
+LENDING CLUB 데이터셋 요약 보고서
+==================================================
+
+1. 데이터셋 기본 정보
+   - 크기: 1,755,295행 × 141열
+   - 메모리 사용량: 4389.99 MB
+
+2. 데이터 타입 분포
+   - float64: 106개
+   - object: 35개
+
+3. 결측치 분석
+   - 결측치가 있는 변수: 140개
+   - 결측치가 없는 변수: 1개
+
+4. 결측치 상위 20개 변수
+   - hardship_loan_status: 1,669,387.0개 (95.1%)
+   - hardship_reason: 1,669,264.0개 (95.1%)
+   - hardship_status: 1,669,261.0개 (95.1%)
+   - hardship_dpd: 1,669,260.0개 (95.1%)
+   - payment_plan_start_date: 1,669,259.0개 (95.1%)
+   - hardship_type: 1,669,259.0개 (95.1%)
+   - deferral_term: 1,669,259.0개 (95.1%)
+   - hardship_start_date: 1,669,259.0개 (95.1%)
+   - hardship_end_date: 1,669,259.0개 (95.1%)
+   - hardship_length: 1,669,259.0개 (95.1%)
+   - orig_projected_additional_accrued_interest: 1,647,815.0개 (93.9%)
+   - hardship_amount: 1,646,164.0개 (93.8%)
+   - hardship_payoff_balance_amount: 1,646,164.0개 (93.8%)
+   - hardship_last_payment_amount: 1,646,164.0개 (93.8%)
+   - sec_app_revol_util: 1,638,553.0개 (93.3%)
+   - verification_status_joint: 1,638,412.0개 (93.3%)
+   - sec_app_open_acc: 1,636,590.0개 (93.2%)
+   - sec_app_mort_acc: 1,636,590.0개 (93.2%)
+   - sec_app_fico_range_high: 1,636,590.0개 (93.2%)
+   - sec_app_inq_last_6mths: 1,636,590.0개 (93.2%)
+
+5. loan_status 분포
+   - Fully Paid: 898,522개 (51.19%)
+   - Current: 618,688개 (35.25%)
+   - Charged Off: 217,366개 (12.38%)
+   - Late (31-120 days): 9,840개 (0.56%)
+   - In Grace Period: 6,049개 (0.34%)
+   - Late (16-30 days): 1,620개 (0.09%)
+   - Issued: 1,258개 (0.07%)
+   - Does not meet the credit policy. Status:Fully Paid: 1,223개 (0.07%)
+   - Does not meet the credit policy. Status:Charged Off: 460개 (0.03%)
+   - Default: 268개 (0.02%)
+
+==================================================
