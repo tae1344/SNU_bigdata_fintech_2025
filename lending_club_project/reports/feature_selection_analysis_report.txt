@@ -1,0 +1,168 @@
+================================================================================
+특성 선택 및 차원 축소 보고서
+================================================================================
+
+1. 상관관계 분석 결과 (상위 20개)
+--------------------------------------------------
+ 1. last_fico_range_high           | 상관계수: 0.6085
+ 2. recoveries                     | 상관계수: 0.5818
+ 3. last_fico_range_low            | 상관계수: 0.5700
+ 4. collection_recovery_fee        | 상관계수: 0.5550
+ 5. total_rec_prncp                | 상관계수: 0.2518
+ 6. sub_grade                      | 상관계수: 0.2207
+ 7. int_rate                       | 상관계수: 0.1926
+ 8. total_pymnt                    | 상관계수: 0.1814
+ 9. total_pymnt_inv                | 상관계수: 0.1801
+10. last_pymnt_amnt                | 상관계수: 0.1781
+11. out_prncp                      | 상관계수: 0.1600
+12. out_prncp_inv                  | 상관계수: 0.1599
+13. id                             | 상관계수: 0.1549
+14. bc_open_to_buy                 | 상관계수: 0.1125
+15. hardship_dpd                   | 상관계수: 0.1072
+16. fico_range_low                 | 상관계수: 0.1061
+17. fico_range_high                | 상관계수: 0.1061
+18. total_bc_limit                 | 상관계수: 0.0993
+19. sec_app_open_act_il            | 상관계수: 0.0989
+20. percent_bc_gt_75               | 상관계수: 0.0988
+
+2. F-test (ANOVA) 분석 결과 (상위 20개)
+--------------------------------------------------
+32. last_fico_range_high           | F-score: 586.73
+29. recoveries                     | F-score: 510.74
+33. last_fico_range_low            | F-score: 480.30
+30. collection_recovery_fee        | F-score: 444.22
+26. total_rec_prncp                | F-score: 67.54
+ 6. sub_grade                      | F-score: 51.10
+ 4. int_rate                       | F-score: 38.46
+24. total_pymnt                    | F-score: 33.95
+25. total_pymnt_inv                | F-score: 33.44
+31. last_pymnt_amnt                | F-score: 32.69
+22. out_prncp                      | F-score: 26.20
+23. out_prncp_inv                  | F-score: 26.19
+ 0. id                             | F-score: 24.53
+59. bc_open_to_buy                 | F-score: 12.80
+108. hardship_dpd                   | F-score: 11.60
+12. fico_range_low                 | F-score: 11.36
+13. fico_range_high                | F-score: 11.36
+92. total_bc_limit                 | F-score: 9.94
+101. sec_app_open_act_il            | F-score: 9.85
+87. percent_bc_gt_75               | F-score: 9.83
+
+3. Mutual Information 분석 결과 (상위 20개)
+--------------------------------------------------
+30. collection_recovery_fee        | MI-score: 0.2093
+29. recoveries                     | MI-score: 0.2027
+32. last_fico_range_high           | MI-score: 0.1835
+33. last_fico_range_low            | MI-score: 0.1798
+31. last_pymnt_amnt                | MI-score: 0.0701
+26. total_rec_prncp                | MI-score: 0.0654
+ 6. sub_grade                      | MI-score: 0.0392
+28. total_rec_late_fee             | MI-score: 0.0379
+22. out_prncp                      | MI-score: 0.0316
+23. out_prncp_inv                  | MI-score: 0.0304
+108. hardship_dpd                   | MI-score: 0.0204
+107. hardship_length                | MI-score: 0.0186
+111. hardship_last_payment_amount   | MI-score: 0.0182
+87. percent_bc_gt_75               | MI-score: 0.0174
+ 5. installment                    | MI-score: 0.0161
+51. max_bal_bc                     | MI-score: 0.0146
+12. fico_range_low                 | MI-score: 0.0146
+36. policy_code                    | MI-score: 0.0145
+68. mths_since_recent_bc           | MI-score: 0.0142
+ 2. funded_amnt                    | MI-score: 0.0142
+
+4. Random Forest 특성 중요도 (상위 20개)
+--------------------------------------------------
+29. recoveries                     | 중요도: 0.1747
+30. collection_recovery_fee        | 중요도: 0.1718
+32. last_fico_range_high           | 중요도: 0.1183
+33. last_fico_range_low            | 중요도: 0.0975
+26. total_rec_prncp                | 중요도: 0.0342
+31. last_pymnt_amnt                | 중요도: 0.0256
+25. total_pymnt_inv                | 중요도: 0.0169
+22. out_prncp                      | 중요도: 0.0167
+24. total_pymnt                    | 중요도: 0.0135
+ 5. installment                    | 중요도: 0.0129
+ 4. int_rate                       | 중요도: 0.0127
+ 0. id                             | 중요도: 0.0121
+23. out_prncp_inv                  | 중요도: 0.0107
+ 2. funded_amnt                    | 중요도: 0.0098
+ 1. loan_amnt                      | 중요도: 0.0093
+ 6. sub_grade                      | 중요도: 0.0089
+ 3. funded_amnt_inv                | 중요도: 0.0079
+27. total_rec_int                  | 중요도: 0.0078
+28. total_rec_late_fee             | 중요도: 0.0077
+59. bc_open_to_buy                 | 중요도: 0.0069
+
+5. 최종 선택된 특성들
+--------------------------------------------------
+공통 특성 (모든 방법에서 상위): 11개
+  - out_prncp
+  - total_rec_prncp
+  - last_fico_range_low
+  - recoveries
+  - sub_grade
+  - bc_open_to_buy
+  - last_fico_range_high
+  - out_prncp_inv
+  - last_pymnt_amnt
+  - collection_recovery_fee
+  - total_rec_late_fee
+
+점수 기반 상위 특성: 25개
+   1. total_rec_prncp                | 점수: 4/4
+   2. recoveries                     | 점수: 4/4
+   3. out_prncp                      | 점수: 4/4
+   4. sub_grade                      | 점수: 4/4
+   5. last_fico_range_high           | 점수: 4/4
+   6. last_pymnt_amnt                | 점수: 4/4
+   7. total_rec_late_fee             | 점수: 4/4
+   8. last_fico_range_low            | 점수: 4/4
+   9. out_prncp_inv                  | 점수: 4/4
+  10. collection_recovery_fee        | 점수: 4/4
+  11. bc_open_to_buy                 | 점수: 4/4
+  12. total_pymnt_inv                | 점수: 3/4
+  13. hardship_dpd                   | 점수: 3/4
+  14. fico_range_low                 | 점수: 3/4
+  15. id                             | 점수: 3/4
+  16. percent_bc_gt_75               | 점수: 3/4
+  17. total_pymnt                    | 점수: 3/4
+  18. int_rate                       | 점수: 3/4
+  19. inq_last_6mths                 | 점수: 2/4
+  20. bc_util                        | 점수: 2/4
+  21. mths_since_recent_bc           | 점수: 2/4
+  22. total_bc_limit                 | 점수: 2/4
+  23. open_acc_6m                    | 점수: 2/4
+  24. total_rev_hi_lim               | 점수: 2/4
+  25. funded_amnt                    | 점수: 2/4
+
+6. 새로운 특성 카테고리별 분석
+--------------------------------------------------
+신용점수_관련:
+  - 전체: 6개
+  - 선택됨: 0개
+
+신용이용률_관련:
+  - 전체: 3개
+  - 선택됨: 0개
+
+소득부채_관련:
+  - 전체: 4개
+  - 선택됨: 0개
+
+연체이력_관련:
+  - 전체: 4개
+  - 선택됨: 0개
+
+계좌정보_관련:
+  - 전체: 5개
+  - 선택됨: 0개
+
+시간관련:
+  - 전체: 4개
+  - 선택됨: 0개
+
+복합지표:
+  - 전체: 5개
+  - 선택됨: 0개
+
