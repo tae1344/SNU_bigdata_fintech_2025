@@ -209,6 +209,8 @@
 
 ## 세부 Task Milestone
 
+- milestone 진행시 /docs의 report.txt, completed_milestones.md에 내용을 수정하거나 추가.
+
 ### Phase 1: 데이터 이해 및 전처리 (1-2주)
 
 #### Milestone 1.1: 데이터 탐색
@@ -228,8 +230,8 @@
 
 #### Milestone 1.3: 특성 엔지니어링
 
-- [ ] 범주형 변수 인코딩
-- [ ] 수치형 변수 정규화/표준화
+- [x] 범주형 변수 인코딩
+- [x] 수치형 변수 정규화/표준화
 - [ ] 새로운 특성 생성
 - [ ] 특성 선택/차원 축소
 

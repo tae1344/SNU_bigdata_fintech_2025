@@ -220,6 +220,21 @@ def plot_data_overview(df):
     
     print("✓ 데이터 개요 시각화가 'data_overview.png'에 저장되었습니다.")
 
+def save_variable_missing_summary(df, output_file='variable_missing_summary.txt'):
+    """
+    모든 변수에 대해 값 개수, 결측치 개수, 결측치 비율을 표로 저장
+    """
+    summary = []
+    total = len(df)
+    for col in df.columns:
+        missing = df[col].isnull().sum()
+        notnull = total - missing
+        missing_pct = round(missing / total * 100, 2)
+        summary.append([col, notnull, missing, f"{missing_pct}%"])
+    summary_df = pd.DataFrame(summary, columns=['변수명', '값 개수', '결측치 개수', '결측치 비율'])
+    summary_df.to_csv(output_file, sep='\t', index=False)
+    print(f"\n✓ 변수별 결측치 요약이 '{output_file}'에 저장되었습니다.")
+
 if __name__ == "__main__":
     # 파일 경로 설정
     file_path = "lending_club_2020_train.csv"
@@ -230,6 +245,9 @@ if __name__ == "__main__":
     if df is not None:
         # 데이터 요약 보고서 생성
         create_data_summary_report(df)
+        
+        # 변수별 결측치 요약 저장
+        save_variable_missing_summary(df)
         
         # 데이터 시각화
         plot_data_overview(df)

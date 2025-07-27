@@ -1,0 +1,187 @@
+# Lending Club 변수 한글 설명 (카테고리별)
+
+[1. 대출자 정보 (borrower_information)]
+id: 대출 고유 ID
+member_id: 대출자(회원) 고유 ID
+annual_inc: 대출자가 신고한 연간 소득
+annual_inc_joint: 공동 대출자의 합산 연간 소득
+application_type: 신청 유형(개인/공동)
+emp_length: 근속 연수(0~10, 0은 1년 미만, 10은 10년 이상)
+emp_title: 직업명
+home_ownership: 주거 형태(임대, 자가, 모기지, 기타)
+addr_state: 주(state)
+zip_code: 우편번호(앞 3자리)
+verification_status: 소득 검증 상태
+verified_status_joint: 공동 대출자 소득 검증 상태
+
+[2. 대출 정보 (loan_information)]
+loan_amnt: 신청 대출 금액
+funded_amnt: 실제 펀딩된 금액
+funded_amnt_inv: 투자자 펀딩 금액
+term: 상환 기간(개월, 36/60)
+int_rate: 대출 이자율(%)
+installment: 월 상환금액
+grade: 대출 등급(알파벳)
+sub_grade: 대출 세부 등급
+loan_status: 대출 상태
+purpose: 대출 목적
+title: 대출 제목
+desc: 대출 설명
+issue_d: 대출 실행 월
+initial_list_status: 최초 상장 상태(W/F)
+policy_code: 정책 코드
+disbursement_method: 대출 지급 방식(CASH, DIRECT_PAY)
+
+[3. 신용 정보 (credit_information)]
+fico_range_low: 대출 시점 FICO 점수 하한
+fico_range_high: 대출 시점 FICO 점수 상한
+last_fico_range_low: 최근 FICO 점수 하한
+last_fico_range_high: 최근 FICO 점수 상한
+earliest_cr_line: 최초 신용계좌 개설 월
+last_credit_pull_d: 최근 신용정보 조회 월
+dti: 부채비율(%)
+dti_joint: 공동 대출자 부채비율(%)
+
+[4. 지급 정보 (payment_information)]
+last_pymnt_amnt: 최근 상환 금액
+last_pymnt_d: 최근 상환 월
+next_pymnt_d: 다음 예정 상환 월
+total_pymnt: 누적 상환 금액
+total_pymnt_inv: 투자자 누적 상환 금액
+total_rec_prncp: 누적 상환 원금
+total_rec_int: 누적 상환 이자
+total_rec_late_fee: 누적 연체 수수료
+out_prncp: 미상환 원금(전체)
+out_prncp_inv: 미상환 원금(투자자)
+pymnt_plan: 상환 계획 존재 여부
+
+[5. 연체 정보 (delinquency_information)]
+acc_now_delinq: 현재 연체 계좌 수
+delinq_2yrs: 최근 2년간 30일 이상 연체 건수
+delinq_amnt: 현재 연체 금액
+mths_since_last_delinq: 마지막 연체 이후 경과 개월
+mths_since_last_major_derog: 최근 중대 연체 이후 경과 개월
+mths_since_last_record: 최근 공공기록 이후 경과 개월
+num_tl_30dpd: 최근 2개월 내 30일 연체 계좌 수
+num_tl_120dpd_2m: 최근 2개월 내 120일 연체 계좌 수
+num_tl_90g_dpd_24m: 최근 24개월 내 90일 이상 연체 계좌 수
+num_accts_ever_120_pd: 120일 이상 연체 경험 계좌 수
+mths_since_recent_revol_delinq: 최근 리볼빙 연체 이후 경과 개월
+mths_since_recent_bc_dlq: 최근 신용카드 연체 이후 경과 개월
+
+[6. 계좌 정보 (account_information)]
+total_acc: 전체 신용계좌 수
+open_acc: 개설된 신용계좌 수
+open_acc_6m: 최근 6개월 내 개설 계좌 수
+open_il_12m: 최근 12개월 내 할부계좌 개설 수
+open_il_24m: 최근 24개월 내 할부계좌 개설 수
+open_rv_12m: 최근 12개월 내 리볼빙계좌 개설 수
+open_rv_24m: 최근 24개월 내 리볼빙계좌 개설 수
+open_act_il: 현재 활성화된 할부계좌 수
+open_act_rev_tl: 현재 활성화된 리볼빙계좌 수
+num_actv_bc_tl: 현재 활성화된 신용카드 계좌 수
+num_actv_rev_tl: 현재 활성화된 리볼빙계좌 수
+num_bc_sats: 양호한 신용카드 계좌 수
+num_bc_tl: 신용카드 계좌 수
+num_il_tl: 할부계좌 수
+num_op_rev_tl: 개설된 리볼빙계좌 수
+num_rev_accts: 리볼빙 계좌 수
+num_rev_tl_bal_gt_0: 잔액이 0보다 큰 리볼빙계좌 수
+num_sats: 양호한 계좌 수
+num_tl_op_past_12m: 최근 12개월 내 개설 계좌 수
+acc_open_past_24mths: 최근 24개월 내 개설 계좌 수
+
+[7. 잔액 정보 (balance_information)]
+revol_bal: 리볼빙(회전) 잔액
+revol_util: 리볼빙 한도 대비 사용률(%)
+all_util: 전체 한도 대비 잔액 비율
+bc_util: 신용카드 한도 대비 잔액 비율
+il_util: 할부계좌 한도 대비 잔액 비율
+avg_cur_bal: 전체 계좌 평균 잔액
+bc_open_to_buy: 신용카드 사용 가능 한도
+max_bal_bc: 신용카드 최대 잔액
+tot_cur_bal: 전체 계좌 총 잔액
+tot_hi_cred_lim: 전체 계좌 총 한도
+total_bal_ex_mort: 모기지 제외 총 잔액
+total_bal_il: 할부계좌 총 잔액
+total_bc_limit: 신용카드 총 한도
+total_il_high_credit_limit: 할부계좌 총 한도
+total_rev_hi_lim: 리볼빙 총 한도
+
+[8. 조회 정보 (inquiry_information)]
+inq_fi: 금융 조회 건수
+inq_last_12m: 최근 12개월 내 신용조회 건수
+inq_last_6mths: 최근 6개월 내 신용조회 건수(자동차/모기지 제외)
+mths_since_recent_inq: 최근 신용조회 이후 경과 개월
+
+[9. 계좌 연령 정보 (account_age_information)]
+mo_sin_old_il_acct: 가장 오래된 할부계좌 개설 후 경과 개월
+mo_sin_old_rev_tl_op: 가장 오래된 리볼빙계좌 개설 후 경과 개월
+mo_sin_rcnt_rev_tl_op: 최근 리볼빙계좌 개설 후 경과 개월
+mo_sin_rcnt_tl: 최근 계좌 개설 후 경과 개월
+mths_since_rcnt_il: 최근 할부계좌 개설 후 경과 개월
+mths_since_recent_bc: 최근 신용카드 계좌 개설 후 경과 개월
+
+[10. 모기지 정보 (mortgage_information)]
+mort_acc: 모기지 계좌 수
+
+[11. 공공 기록 (public_records)]
+pub_rec: 부정적 공공기록 건수
+pub_rec_bankruptcies: 파산 기록 건수
+tax_liens: 세금 저당권 건수
+
+[12. 채무상각/수금 (collections_and_chargeoffs)]
+chargeoff_within_12_mths: 최근 12개월 내 채무상각 건수
+collections_12_mths_ex_med: 최근 12개월 내(의료 제외) 수금 건수
+collection_recovery_fee: 채무상각 후 수금 수수료
+recoveries: 채무상각 후 회수 금액
+tot_coll_amt: 총 수금 금액
+
+[13. 신용 품질 지표 (credit_quality_metrics)]
+pct_tl_nvr_dlq: 연체 없는 계좌 비율(%)
+percent_bc_gt_75: 신용카드 한도 75% 초과 계좌 비율(%)
+total_cu_tl: 금융 거래 계좌 수
+
+[14. 공동신청인 정보 (secondary_applicant_information)]
+sec_app_fico_range_low: 공동신청인 FICO 점수 하한
+sec_app_fico_range_high: 공동신청인 FICO 점수 상한
+sec_app_earliest_cr_line: 공동신청인 최초 신용계좌 개설 월
+sec_app_inq_last_6mths: 공동신청인 최근 6개월 내 신용조회 건수
+sec_app_mort_acc: 공동신청인 모기지 계좌 수
+sec_app_open_acc: 공동신청인 개설 계좌 수
+sec_app_revol_util: 공동신청인 리볼빙 한도 대비 사용률(%)
+sec_app_open_act_il: 공동신청인 활성 할부계좌 수
+sec_app_num_rev_accts: 공동신청인 리볼빙 계좌 수
+sec_app_chargeoff_within_12_mths: 공동신청인 최근 12개월 내 채무상각 건수
+sec_app_collections_12_mths_ex_med: 공동신청인 최근 12개월 내(의료 제외) 수금 건수
+sec_app_mths_since_last_major_derog: 공동신청인 최근 중대 연체 이후 경과 개월
+revol_bal_joint: 공동 대출자 리볼빙 잔액 합계
+
+[15. 어려움 대출 정보 (hardship_information)]
+hardship_flag: 어려움 플랜 적용 여부
+hardship_type: 어려움 플랜 유형
+hardship_reason: 어려움 플랜 사유
+hardship_status: 어려움 플랜 상태(진행, 완료 등)
+deferral_term: 어려움 플랜 적용 개월 수
+hardship_amount: 어려움 플랜 월별 상환 금액
+hardship_start_date: 어려움 플랜 시작일
+hardship_end_date: 어려움 플랜 종료일
+payment_plan_start_date: 어려움 플랜 상환 시작일
+hardship_length: 어려움 플랜 적용 기간(개월)
+hardship_dpd: 어려움 플랜 시작 시점 연체 일수
+hardship_loan_status: 어려움 플랜 시작 시점 대출 상태
+orig_projected_additional_accrued_interest: 예상 추가 이자
+hardship_payoff_balance_amount: 어려움 플랜 시작 시점 상환 잔액
+hardship_last_payment_amount: 어려움 플랜 시작 시점 마지막 상환 금액
+
+[16. 부채 조정 정보 (debt_settlement_information)]
+debt_settlement_flag: 부채 조정 진행 여부
+debt_settlement_flag_date: 부채 조정 플래그 설정일
+settlement_status: 부채 조정 상태(완료, 진행, 취소 등)
+settlement_date: 부채 조정 합의일
+settlement_amount: 합의된 상환 금액
+settlement_percentage: 상환 합의 금액의 비율(%)
+settlement_term: 부채 조정 상환 기간(개월)
+
+[17. 메타데이터 (metadata)]
+url: 대출 데이터 상세 페이지 URL 
