@@ -1,0 +1,57 @@
+개선된 종속변수 정의 및 클래스 불균형 분석 보고서
+==================================================
+
+1. 개선된 부도 정의 기준
+------------------------------
+선택된 상태들: Charged Off, Fully Paid, Current, Late (31-120 days), Late (16-30 days), Default, In Grace Period
+부도로 분류: Charged Off, Default, Late (31-120 days), Late (16-30 days)
+정상으로 분류: Fully Paid, Current, In Grace Period
+기타/미분류: Issued, Does not meet the credit policy 등
+
+2. 원본 loan_status 분포
+------------------------------
+- Fully Paid: 898,522개 (51.19%)
+- Current: 618,688개 (35.25%)
+- Charged Off: 217,366개 (12.38%)
+- Late (31-120 days): 9,840개 (0.56%)
+- In Grace Period: 6,049개 (0.34%)
+- Late (16-30 days): 1,620개 (0.09%)
+- Issued: 1,258개 (0.07%)
+- Does not meet the credit policy. Status:Fully Paid: 1,223개 (0.07%)
+- Does not meet the credit policy. Status:Charged Off: 460개 (0.03%)
+- Default: 268개 (0.02%)
+
+3. 새로운 target 변수 분포
+------------------------------
+- 정상 (label='non_default'): 1,523,259개 (86.78%)
+- 부도 (label='default'): 229,094개 (13.05%)
+- 기타/미분류 (label='other'): 2,941개 (0.17%)
+
+4. 기존 is_default 변수 분포 (하위 호환성)
+------------------------------
+- 기타/미분류 (label=-1.0): 2,941개 (0.17%)
+- 정상 (label=0.0): 1,523,259개 (86.78%)
+- 부도 (label=1.0): 229,094개 (13.05%)
+
+5. 개선된 클래스 불균형 분석
+------------------------------
+- 총 데이터: 1,752,353개
+- 부도: 229,094개 (13.07%)
+- 정상: 1,523,259개 (86.93%)
+- 불균형 비율: 6.65:1
+
+  선택된 상태별 상세 분포:
+  - Fully Paid: 898,522개 (51.28%)
+  - Current: 618,688개 (35.31%)
+  - Charged Off: 217,366개 (12.40%)
+  - Late (31-120 days): 9,840개 (0.56%)
+  - In Grace Period: 6,049개 (0.35%)
+  - Late (16-30 days): 1,620개 (0.09%)
+  - Default: 268개 (0.02%)
+
+6. 권장 대응 방안
+------------------------------
+- 샘플링 기법: SMOTE, ADASYN, Borderline SMOTE
+- 모델링 기법: 클래스 가중치 적용, 임계값 조정
+- 평가 지표: Precision, Recall, F1-Score, AUC-ROC
+- 새로운 target 변수 사용 권장 (더 명확한 라벨링)

@@ -22,6 +22,36 @@ warnings.filterwarnings('ignore')
 plt.rcParams['font.family'] = 'AppleGothic'
 plt.rcParams['axes.unicode_minus'] = False
 
+def monitor_memory_usage():
+    """
+    현재 프로세스의 메모리 사용량을 모니터링하는 함수
+    """
+    try:
+        import psutil
+        process = psutil.Process()
+        memory_info = process.memory_info()
+        return {
+            'rss_mb': memory_info.rss / 1024**2,  # Resident Set Size in MB
+            'vms_mb': memory_info.vms / 1024**2,  # Virtual Memory Size in MB
+            'percent': process.memory_percent()     # Memory usage as percentage
+        }
+    except ImportError:
+        print("  경고: psutil이 설치되지 않아 메모리 모니터링을 건너뜁니다.")
+        return None
+    except Exception as e:
+        print(f"  경고: 메모리 모니터링 중 오류 발생: {e}")
+        return None
+
+def print_memory_usage(label="현재"):
+    """
+    메모리 사용량을 출력하는 함수
+    """
+    memory_info = monitor_memory_usage()
+    if memory_info:
+        print(f"  {label} 메모리 사용량: {memory_info['rss_mb']:.2f} MB (시스템의 {memory_info['percent']:.1f}%)")
+    else:
+        print(f"  {label} 메모리 사용량: 모니터링 불가")
+
 def load_and_explore_data(file_path):
     """
     Lending Club 데이터를 로드하고 기본 구조를 파악하는 함수
@@ -30,16 +60,45 @@ def load_and_explore_data(file_path):
     print("LENDING CLUB 데이터셋 구조 파악")
     print("=" * 80)
     
-    # 1. 데이터 로드
+    # 1. 데이터 로드 (개선된 버전)
     print("\n1. 데이터 로드 중...")
     try:
-        df = pd.read_csv(file_path)
+        # 메모리 사용량 모니터링 시작
+        print_memory_usage("로딩 전")
+        
+        # low_memory=False로 경고 방지 및 안정적인 로딩
+        df = pd.read_csv(file_path, low_memory=False)
+        
+        # 메모리 사용량 모니터링 완료
+        print_memory_usage("로딩 후")
+        
+        # 메모리 증가량 계산
+        memory_info_before = monitor_memory_usage()
+        memory_info_after = monitor_memory_usage()
+        if memory_info_before and memory_info_after:
+            memory_used = memory_info_after['rss_mb'] - memory_info_before['rss_mb']
+            print(f"  데이터 로딩으로 인한 메모리 증가: {memory_used:.2f} MB")
+        
         print(f"✓ 데이터 로드 완료: {file_path}")
+        
     except FileNotFoundError:
         print(f"✗ 파일을 찾을 수 없습니다: {file_path}")
+        print("  파일 경로를 확인하고 파일이 존재하는지 확인해주세요.")
+        return None
+    except pd.errors.EmptyDataError:
+        print(f"✗ 파일이 비어있습니다: {file_path}")
+        return None
+    except pd.errors.ParserError as e:
+        print(f"✗ CSV 파싱 오류: {e}")
+        print("  파일 형식이 올바른지 확인해주세요.")
+        return None
+    except MemoryError:
+        print(f"✗ 메모리 부족으로 인한 로딩 실패")
+        print("  시스템 메모리를 확인하거나 데이터를 분할하여 로딩해주세요.")
         return None
     except Exception as e:
-        print(f"✗ 데이터 로드 중 오류 발생: {e}")
+        print(f"✗ 데이터 로드 중 예상치 못한 오류 발생: {e}")
+        print(f"  오류 타입: {type(e).__name__}")
         return None
     
     # 2. 기본 정보 출력
