@@ -29,25 +29,12 @@
   - 우선순위별 특성 분류
   - 영향 점수 및 설명 포함
 
-- `missing_values_by_order.csv`: 변수별 결측치 비율
-
-  - 변수 순서대로 정렬된 결측치 정보
-
-- `lending_club_variables_excel.csv`: 변수 설명 엑셀 파일
-  - 변수명, 한국어/영문 설명
-  - 카테고리, 데이터 타입 정보
-
 ### 📝 변수 분석 문서
 
 - `variable_comments.txt`: 변수별 상세 코멘트
 
   - 의미, 중요도, 활용법 설명
   - 결측치 상태 포함
-
-- `variable_comments_narrative.csv`: 서술형 변수 코멘트
-
-  - 자연어 형태의 변수 설명
-  - 쉬운 이해를 위한 서술형 표현
 
 - `data_info.txt`: 데이터셋 정보
   - 데이터셋 개요

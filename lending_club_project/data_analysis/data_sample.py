@@ -6,9 +6,20 @@
 import pandas as pd
 import numpy as np
 import os
+import sys
+from pathlib import Path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-def create_data_sample(input_file='lending_club_2020_train.csv', 
-                      output_file='lending_club_sample.csv',
+from config.file_paths import (
+    RAW_DATA_PATH,
+    SAMPLE_DATA_PATH,
+    DATA_SUMMARY_REPORT_PATH,
+    ensure_directory_exists,
+    file_exists
+)
+
+def create_data_sample(input_file=None, 
+                      output_file=None,
                       sample_size=1000,
                       random_state=42):
     """
@@ -16,17 +27,31 @@ def create_data_sample(input_file='lending_club_2020_train.csv',
     
     Parameters:
     -----------
-    input_file : str
-        입력 CSV 파일 경로
-    output_file : str
-        출력 CSV 파일 경로
+    input_file : str, optional
+        입력 CSV 파일 경로 (None이면 기본 경로 사용)
+    output_file : str, optional
+        출력 CSV 파일 경로 (None이면 기본 경로 사용)
     sample_size : int
         샘플 크기
     random_state : int
         랜덤 시드
     """
+    # 기본 경로 설정
+    if input_file is None:
+        input_file = str(RAW_DATA_PATH)
+    if output_file is None:
+        output_file = str(SAMPLE_DATA_PATH)
     
     print(f"데이터 샘플 생성 중... (크기: {sample_size})")
+    
+    # 입력 파일 존재 확인
+    if not file_exists(Path(input_file)):
+        print(f"✗ 입력 파일이 존재하지 않습니다: {input_file}")
+        print("전체 데이터셋 파일을 다운로드해주세요.")
+        return None
+    
+    # 출력 디렉토리 생성
+    ensure_directory_exists(Path(output_file).parent)
     
     # 데이터 로드 (청크 단위로 처리)
     chunk_size = 10000
@@ -57,7 +82,7 @@ def create_data_sample(input_file='lending_club_2020_train.csv',
     
     return sample_df
 
-def create_data_info_file(sample_df, output_file='data_info.txt'):
+def create_data_info_file(sample_df, output_file=None):
     """
     데이터 정보를 텍스트 파일로 저장
     
@@ -65,9 +90,13 @@ def create_data_info_file(sample_df, output_file='data_info.txt'):
     -----------
     sample_df : pandas.DataFrame
         샘플 데이터프레임
-    output_file : str
-        출력 파일 경로
+    output_file : str, optional
+        출력 파일 경로 (None이면 기본 경로 사용)
     """
+    if output_file is None:
+        output_file = str(DATA_SUMMARY_REPORT_PATH)
+    
+    ensure_directory_exists(Path(output_file).parent)
     
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write("Lending Club 데이터셋 정보\n")
@@ -105,8 +134,12 @@ if __name__ == "__main__":
     # 샘플 데이터 생성
     sample_df = create_data_sample(sample_size=1000)
     
-    # 데이터 정보 파일 생성
-    create_data_info_file(sample_df)
-    
-    print("\n✅ 데이터 샘플 생성 완료!")
-    print("이제 GitHub에 업로드할 수 있습니다.") 
+    if sample_df is not None:
+        # 데이터 정보 파일 생성
+        create_data_info_file(sample_df)
+        
+        print("\n✅ 데이터 샘플 생성 완료!")
+        print("이제 GitHub에 업로드할 수 있습니다.")
+    else:
+        print("\n❌ 데이터 샘플 생성에 실패했습니다.")
+        print("전체 데이터셋 파일을 확인해주세요.") 

@@ -2,6 +2,17 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import warnings
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from config.file_paths import (
+    SAMPLE_DATA_PATH,
+    NEW_FEATURES_DATA_PATH,
+    ensure_directory_exists,
+    file_exists
+)
+
 warnings.filterwarnings('ignore')
 
 def safe_numeric_conversion(series, default_value=0):
@@ -247,16 +258,21 @@ def main():
     try:
         # 데이터 로드
         print("📂 데이터 로드 중...")
-        df = pd.read_csv('lending_club_sample.csv')
+        if not file_exists(SAMPLE_DATA_PATH):
+            print(f"✗ 샘플 데이터 파일이 존재하지 않습니다: {SAMPLE_DATA_PATH}")
+            print("먼저 data_sample.py를 실행하여 샘플 데이터를 생성해주세요.")
+            return None
+        
+        df = pd.read_csv(SAMPLE_DATA_PATH)
         print(f"✅ 데이터 로드 완료: {len(df)}행, {len(df.columns)}열")
         
         # 새로운 특성 생성
         df_with_new_features = create_new_features(df)
         
         # 결과 저장
-        output_file = 'lending_club_sample_with_new_features.csv'
-        df_with_new_features.to_csv(output_file, index=False)
-        print(f"💾 결과 저장 완료: {output_file}")
+        ensure_directory_exists(NEW_FEATURES_DATA_PATH.parent)
+        df_with_new_features.to_csv(NEW_FEATURES_DATA_PATH, index=False)
+        print(f"💾 결과 저장 완료: {NEW_FEATURES_DATA_PATH}")
         
         # 생성된 특성 요약
         print("\n📋 생성된 새로운 특성 요약:")

@@ -2,12 +2,26 @@
 
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from config.file_paths import (
+    SAMPLE_DATA_PATH,
+    ENCODED_DATA_PATH,
+    ensure_directory_exists,
+    file_exists
+)
 
 # 1. 데이터 로드
-file_path = 'lending_club_sample.csv'  # 샘플 데이터 사용
 try:
-    df = pd.read_csv(file_path)
-    print(f"✓ 데이터 로드 완료: {file_path}")
+    if not file_exists(SAMPLE_DATA_PATH):
+        print(f"✗ 샘플 데이터 파일이 존재하지 않습니다: {SAMPLE_DATA_PATH}")
+        print("먼저 data_sample.py를 실행하여 샘플 데이터를 생성해주세요.")
+        exit(1)
+    
+    df = pd.read_csv(SAMPLE_DATA_PATH)
+    print(f"✓ 데이터 로드 완료: {SAMPLE_DATA_PATH}")
 except Exception as e:
     print(f"✗ 데이터 로드 실패: {e}")
     exit(1)
@@ -48,6 +62,6 @@ print(f"\n최종 데이터셋 shape: {df.shape}")
 print(f"컬럼 예시: {list(df.columns[:15])} ...")
 
 # 6. 인코딩된 데이터 저장
-output_file = 'lending_club_sample_encoded.csv'
-df.to_csv(output_file, index=False)
-print(f"\n✓ 인코딩된 데이터 저장 완료: {output_file}") 
+ensure_directory_exists(ENCODED_DATA_PATH.parent)
+df.to_csv(ENCODED_DATA_PATH, index=False)
+print(f"\n✓ 인코딩된 데이터 저장 완료: {ENCODED_DATA_PATH}") 

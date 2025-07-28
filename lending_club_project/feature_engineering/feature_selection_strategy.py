@@ -3,6 +3,15 @@
 Sharpe Ratio 극대화 관점에서 특성 선택
 """
 
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from config.file_paths import (
+    FEATURE_SELECTION_REPORT_PATH,
+    ensure_directory_exists
+)
+
 def define_feature_priority_strategy():
     """
     Sharpe Ratio 극대화를 위한 특성 우선순위 전략 정의
@@ -183,7 +192,10 @@ def create_feature_selection_strategy_report():
     strategy = define_feature_priority_strategy()
     selected_features = select_features_for_sharpe_optimization()
     
-    with open('./reports/feature_selection_strategy_report.txt', 'w', encoding='utf-8') as f:
+    # 디렉토리 존재 확인 및 생성
+    ensure_directory_exists(FEATURE_SELECTION_REPORT_PATH.parent)
+    
+    with open(FEATURE_SELECTION_REPORT_PATH, 'w', encoding='utf-8') as f:
         f.write("=" * 80 + "\n")
         f.write("Sharpe Ratio 극대화를 위한 특성 선택 전략 보고서\n")
         f.write("=" * 80 + "\n\n")
@@ -253,7 +265,7 @@ def create_feature_selection_strategy_report():
         f.write("- 수익률 예측 정확도 향상 (분자 최대화)\n")
         f.write("- 변동성 최소화 (안정적 수익률)\n")
     
-    print("✓ 특성 선택 전략 보고서가 'feature_selection_strategy_report.txt'에 저장되었습니다.")
+    print(f"✓ 특성 선택 전략 보고서가 '{FEATURE_SELECTION_REPORT_PATH}'에 저장되었습니다.")
 
 if __name__ == "__main__":
     create_feature_selection_strategy_report() 

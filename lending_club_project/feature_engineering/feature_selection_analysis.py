@@ -4,6 +4,18 @@ from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classi
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import warnings
+import sys
+import os
+from pathlib import Path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from config.file_paths import (
+    SCALED_STANDARD_DATA_PATH,
+    SELECTED_FEATURES_PATH,
+    ensure_directory_exists,
+    file_exists
+)
+
 warnings.filterwarnings('ignore')
 
 def analyze_feature_importance(df, target_col='loan_status_binary'):
@@ -148,9 +160,19 @@ def categorize_new_features():
     }
     return new_features
 
-def create_feature_selection_report(importance_results, selected_features, output_file='./reports/feature_selection_analysis_report.txt'):
+def create_feature_selection_report(importance_results, selected_features, output_file=None):
     """
     특성 선택 보고서 생성
+    
+    Args:
+        importance_results: 특성 중요도 분석 결과
+        selected_features: 선택된 특성들
+        output_file: 출력 파일 경로 (None이면 기본 경로 사용)
+    """
+    if output_file is None:
+        output_file = '../reports/feature_selection_analysis_report.txt'
+    
+    ensure_directory_exists(Path(output_file).parent)
     """
     print(f"📝 특성 선택 보고서 생성 중... ({output_file})")
     
@@ -227,7 +249,12 @@ def main():
     try:
         # 데이터 로드
         print("📂 데이터 로드 중...")
-        df = pd.read_csv('lending_club_sample_scaled_standard.csv')
+        if not file_exists(SCALED_STANDARD_DATA_PATH):
+            print(f"✗ 스케일링된 데이터 파일이 존재하지 않습니다: {SCALED_STANDARD_DATA_PATH}")
+            print("먼저 feature_engineering_step2_scaling.py를 실행하여 데이터를 스케일링해주세요.")
+            return
+        
+        df = pd.read_csv(SCALED_STANDARD_DATA_PATH)
         
         # 타겟 변수 생성 (loan_status를 이진화)
         df['loan_status_binary'] = df['loan_status'].apply(
@@ -244,18 +271,24 @@ def main():
         create_feature_selection_report(importance_results, selected_features)
         
         # 선택된 특성들을 CSV로 저장
+        ensure_directory_exists(SELECTED_FEATURES_PATH.parent)
         selected_features_df = pd.DataFrame({
             'selected_feature': selected_features['top_features_by_score'],
             'score': [selected_features['feature_scores'][f] for f in selected_features['top_features_by_score']]
         })
-        selected_features_df.to_csv('selected_features.csv', index=False)
-        print("✓ 선택된 특성들이 'selected_features.csv'에 저장되었습니다.")
+        selected_features_df.to_csv(SELECTED_FEATURES_PATH, index=False)
+        print(f"✓ 선택된 특성들이 '{SELECTED_FEATURES_PATH}'에 저장되었습니다.")
         
         print("\n🎉 특성 선택 및 차원 축소 완료!")
         
     except Exception as e:
         print(f"❌ 오류 발생: {e}")
         print("샘플 데이터 파일이 없습니다. 먼저 새로운 특성 생성을 완료해주세요.")
+        print("실행 순서:")
+        print("1. feature_engineering_step1_encoding.py")
+        print("2. feature_engineering_step2_scaling.py") 
+        print("3. feature_engineering_step3_new_features.py")
+        print("4. feature_selection_analysis.py")
 
 if __name__ == "__main__":
     main() 

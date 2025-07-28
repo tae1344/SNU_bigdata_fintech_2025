@@ -4,6 +4,18 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import warnings
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from config.file_paths import (
+    RAW_DATA_PATH,
+    DATA_SUMMARY_REPORT_PATH,
+    VARIABLE_MISSING_SUMMARY_PATH,
+    ensure_directory_exists,
+    file_exists
+)
+
 warnings.filterwarnings('ignore')
 
 # 한글 폰트 설정 (macOS 기준)
@@ -129,10 +141,21 @@ def load_and_explore_data(file_path):
     
     return df
 
-def create_data_summary_report(df, output_file='data_summary_report.txt'):
+def create_data_summary_report(df, output_file=None):
     """
     데이터 요약 보고서를 파일로 저장하는 함수
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    output_file : str, optional
+        출력 파일 경로 (None이면 기본 경로 사용)
     """
+    if output_file is None:
+        output_file = str(DATA_SUMMARY_REPORT_PATH)
+    
+    ensure_directory_exists(Path(output_file).parent)
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write("LENDING CLUB 데이터셋 요약 보고서\n")
         f.write("=" * 50 + "\n\n")
@@ -220,10 +243,21 @@ def plot_data_overview(df):
     
     print("✓ 데이터 개요 시각화가 'data_overview.png'에 저장되었습니다.")
 
-def save_variable_missing_summary(df, output_file='variable_missing_summary.txt'):
+def save_variable_missing_summary(df, output_file=None):
     """
     모든 변수에 대해 값 개수, 결측치 개수, 결측치 비율을 표로 저장
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    output_file : str, optional
+        출력 파일 경로 (None이면 기본 경로 사용)
     """
+    if output_file is None:
+        output_file = str(VARIABLE_MISSING_SUMMARY_PATH)
+    
+    ensure_directory_exists(Path(output_file).parent)
     summary = []
     total = len(df)
     for col in df.columns:
@@ -237,7 +271,13 @@ def save_variable_missing_summary(df, output_file='variable_missing_summary.txt'
 
 if __name__ == "__main__":
     # 파일 경로 설정
-    file_path = "lending_club_2020_train.csv"
+    file_path = str(RAW_DATA_PATH)
+    
+    # 파일 존재 확인
+    if not file_exists(Path(file_path)):
+        print(f"✗ 전체 데이터셋 파일이 존재하지 않습니다: {file_path}")
+        print("전체 데이터셋 파일을 다운로드해주세요.")
+        exit(1)
     
     # 데이터 로드 및 분석
     df = load_and_explore_data(file_path)

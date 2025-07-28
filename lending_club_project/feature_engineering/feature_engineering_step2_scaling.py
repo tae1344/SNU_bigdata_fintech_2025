@@ -2,12 +2,27 @@
 
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from config.file_paths import (
+    ENCODED_DATA_PATH,
+    SCALED_STANDARD_DATA_PATH,
+    SCALED_MINMAX_DATA_PATH,
+    ensure_directory_exists,
+    file_exists
+)
 
 # 1. 데이터 로드
-file_path = 'lending_club_sample_encoded.csv'  # 인코딩된 데이터 사용
 try:
-    df = pd.read_csv(file_path)
-    print(f"✓ 데이터 로드 완료: {file_path}")
+    if not file_exists(ENCODED_DATA_PATH):
+        print(f"✗ 인코딩된 데이터 파일이 존재하지 않습니다: {ENCODED_DATA_PATH}")
+        print("먼저 feature_engineering_step1_encoding.py를 실행하여 데이터를 인코딩해주세요.")
+        exit(1)
+    
+    df = pd.read_csv(ENCODED_DATA_PATH)
+    print(f"✓ 데이터 로드 완료: {ENCODED_DATA_PATH}")
 except Exception as e:
     print(f"✗ 데이터 로드 실패: {e}")
     exit(1)
@@ -43,9 +58,10 @@ df_minmax = df.copy()
 df_minmax[numeric_cols] = scaler_minmax.fit_transform(df[numeric_cols])
 
 # 6. 결과 저장
-output_std = 'lending_club_sample_scaled_standard.csv'
-output_minmax = 'lending_club_sample_scaled_minmax.csv'
-df_std.to_csv(output_std, index=False)
-df_minmax.to_csv(output_minmax, index=False)
-print(f"\n✓ 표준화 데이터 저장 완료: {output_std}")
-print(f"✓ 정규화 데이터 저장 완료: {output_minmax}") 
+ensure_directory_exists(SCALED_STANDARD_DATA_PATH.parent)
+ensure_directory_exists(SCALED_MINMAX_DATA_PATH.parent)
+
+df_std.to_csv(SCALED_STANDARD_DATA_PATH, index=False)
+df_minmax.to_csv(SCALED_MINMAX_DATA_PATH, index=False)
+print(f"\n✓ 표준화 데이터 저장 완료: {SCALED_STANDARD_DATA_PATH}")
+print(f"✓ 정규화 데이터 저장 완료: {SCALED_MINMAX_DATA_PATH}") 
