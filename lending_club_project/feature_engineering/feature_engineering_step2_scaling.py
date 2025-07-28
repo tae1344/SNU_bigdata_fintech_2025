@@ -39,20 +39,60 @@ numeric_cols = [col for col in numeric_cols if col in df.columns]
 print("\n[수치형 변수 목록]")
 print(numeric_cols)
 
-# 3. 결측치 처리 (간단히 평균 대체)
-for col in numeric_cols:
-    # % 기호 등 문자 제거 후 변환 (예: int_rate, revol_util)
-    df[col] = pd.to_numeric(df[col].astype(str).str.replace('%', ''), errors='coerce')
-    if df[col].isnull().sum() > 0:
-        df[col].fillna(df[col].mean(), inplace=True)
-        print(f"✓ 결측치 평균 대체: {col}")
+# 3. 체계적인 결측치 처리
+print("\n[결측치 처리 시작]")
 
-# 4. 표준화(StandardScaler) 적용
+# 3.1 수치형 변수 결측치 처리
+numeric_features = df.select_dtypes(include=['number']).columns
+for col in numeric_features:
+    if df[col].isnull().any():
+        # % 기호 등 문자 제거 후 변환 (예: int_rate, revol_util)
+        df[col] = pd.to_numeric(df[col].astype(str).str.replace('%', ''), errors='coerce')
+        mean_value = df[col].mean()
+        df[col].fillna(mean_value, inplace=True)
+        print(f"✓ 수치형 결측치 처리: {col} (평균값: {mean_value:.4f})")
+
+# 3.2 범주형 변수 결측치 처리
+categorical_features = df.select_dtypes(include=['object']).columns
+for col in categorical_features:
+    if df[col].isnull().any():
+        mode_value = df[col].mode()[0] if len(df[col].mode()) > 0 else 'Unknown'
+        df[col].fillna(mode_value, inplace=True)
+        print(f"✓ 범주형 결측치 처리: {col} (최빈값: {mode_value})")
+
+# 3.3 결측치 처리 결과 확인
+total_missing = df.isnull().sum().sum()
+if total_missing == 0:
+    print("✓ 모든 결측치가 성공적으로 처리되었습니다.")
+else:
+    print(f"⚠️ 경고: {total_missing}개의 결측치가 남아있습니다.")
+    # 남은 결측치가 있는 컬럼 출력
+    missing_cols = df.columns[df.isnull().any()].tolist()
+    print(f"  남은 결측치 컬럼: {missing_cols}")
+
+# 4. 스케일링 전 최종 데이터 타입 확인 및 정리
+print("\n[스케일링 전 데이터 타입 정리]")
+for col in numeric_cols:
+    if col in df.columns:
+        # 문자열에서 % 기호 제거 및 숫자로 변환
+        if df[col].dtype == 'object' or df[col].astype(str).str.contains('%').any():
+            df[col] = pd.to_numeric(df[col].astype(str).str.replace('%', '').str.strip(), errors='coerce')
+            # 변환 후 결측치가 생긴 경우 평균값으로 대체
+            if df[col].isnull().any():
+                mean_val = df[col].mean()
+                df[col].fillna(mean_val, inplace=True)
+                print(f"✓ {col}: 문자열 → 숫자 변환 완료 (평균값: {mean_val:.4f})")
+            else:
+                print(f"✓ {col}: 문자열 → 숫자 변환 완료")
+        else:
+            print(f"✓ {col}: 이미 숫자형")
+
+# 5. 표준화(StandardScaler) 적용
 scaler_std = StandardScaler()
 df_std = df.copy()
 df_std[numeric_cols] = scaler_std.fit_transform(df[numeric_cols])
 
-# 5. 정규화(MinMaxScaler) 적용
+# 6. 정규화(MinMaxScaler) 적용
 scaler_minmax = MinMaxScaler()
 df_minmax = df.copy()
 df_minmax[numeric_cols] = scaler_minmax.fit_transform(df[numeric_cols])
