@@ -1,9 +1,11 @@
-# 수치형 변수 정규화 및 표준화
+# 수치형 변수 정규화 및 표준화 (개선된 버전)
 
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import sys
 import os
+import warnings
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from config.file_paths import (
@@ -13,6 +15,132 @@ from config.file_paths import (
     ensure_directory_exists,
     file_exists
 )
+
+warnings.filterwarnings('ignore')
+
+def clean_percentage_columns(df, percentage_cols=None):
+    """
+    퍼센트 컬럼들을 정리하는 함수 (개선된 버전)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        정리할 데이터프레임
+    percentage_cols : list, optional
+        퍼센트 컬럼 목록 (None이면 자동 감지)
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        정리된 데이터프레임
+    """
+    print("\n[퍼센트 컬럼 정리 시작]")
+    print("-" * 40)
+    
+    # 퍼센트 컬럼 자동 감지 (기본값)
+    if percentage_cols is None:
+        percentage_cols = ['int_rate', 'revol_util']
+    
+    cleaned_df = df.copy()
+    conversion_results = []
+    
+    for col in percentage_cols:
+        if col not in df.columns:
+            print(f"  ⚠️ 경고: {col} 컬럼이 존재하지 않습니다.")
+            continue
+        
+        print(f"\n  {col} 컬럼 처리 중...")
+        
+        # 변환 전 정보
+        original_dtype = df[col].dtype
+        original_sample = df[col].head(3).tolist()
+        print(f"    변환 전 타입: {original_dtype}")
+        print(f"    변환 전 샘플: {original_sample}")
+        
+        try:
+            # 1단계: 문자열로 변환
+            str_col = df[col].astype(str)
+            
+            # 2단계: '%' 기호 제거 및 공백 정리
+            cleaned_str = str_col.str.replace('%', '').str.strip()
+            
+            # 3단계: 숫자로 변환
+            numeric_col = pd.to_numeric(cleaned_str, errors='coerce')
+            
+            # 4단계: 변환 결과 검증
+            conversion_success = not numeric_col.isnull().all()
+            null_count = numeric_col.isnull().sum()
+            total_count = len(numeric_col)
+            
+            if conversion_success:
+                # 5단계: 결측치 처리 (평균값으로 대체)
+                if null_count > 0:
+                    mean_value = numeric_col.mean()
+                    numeric_col.fillna(mean_value, inplace=True)
+                    print(f"    ✓ 변환 성공: {null_count}개 결측치를 평균값({mean_value:.4f})으로 대체")
+                else:
+                    print(f"    ✓ 변환 성공: 모든 값이 정상적으로 변환됨")
+                
+                # 6단계: 데이터프레임에 적용
+                cleaned_df[col] = numeric_col
+                
+                # 변환 후 정보
+                final_dtype = cleaned_df[col].dtype
+                final_sample = cleaned_df[col].head(3).tolist()
+                print(f"    변환 후 타입: {final_dtype}")
+                print(f"    변환 후 샘플: {final_sample}")
+                
+                conversion_results.append({
+                    'column': col,
+                    'status': 'success',
+                    'original_dtype': str(original_dtype),
+                    'final_dtype': str(final_dtype),
+                    'null_count': null_count,
+                    'total_count': total_count
+                })
+                
+            else:
+                print(f"    ✗ 변환 실패: 모든 값이 NaN으로 변환됨")
+                conversion_results.append({
+                    'column': col,
+                    'status': 'failed',
+                    'original_dtype': str(original_dtype),
+                    'final_dtype': 'object',
+                    'null_count': total_count,
+                    'total_count': total_count
+                })
+                
+        except Exception as e:
+            print(f"    ✗ 변환 중 오류 발생: {e}")
+            conversion_results.append({
+                'column': col,
+                'status': 'error',
+                'error_message': str(e),
+                'original_dtype': str(original_dtype),
+                'final_dtype': 'object'
+            })
+    
+    # 변환 결과 요약
+    print(f"\n[퍼센트 컬럼 정리 완료]")
+    print("-" * 40)
+    success_count = sum(1 for result in conversion_results if result['status'] == 'success')
+    failed_count = sum(1 for result in conversion_results if result['status'] == 'failed')
+    error_count = sum(1 for result in conversion_results if result['status'] == 'error')
+    
+    print(f"  성공: {success_count}개")
+    print(f"  실패: {failed_count}개")
+    print(f"  오류: {error_count}개")
+    
+    for result in conversion_results:
+        status_icon = "✓" if result['status'] == 'success' else "✗"
+        print(f"  {status_icon} {result['column']}: {result['status']}")
+        if result['status'] == 'success':
+            print(f"    {result['original_dtype']} → {result['final_dtype']}")
+            print(f"    결측치: {result['null_count']}/{result['total_count']}")
+        elif result['status'] == 'error':
+            print(f"    오류: {result['error_message']}")
+    
+    return cleaned_df, conversion_results
 
 # 1. 데이터 로드
 try:
@@ -39,20 +167,24 @@ numeric_cols = [col for col in numeric_cols if col in df.columns]
 print("\n[수치형 변수 목록]")
 print(numeric_cols)
 
-# 3. 체계적인 결측치 처리
+# 3. 개선된 문자열 데이터 정리
+print("\n[개선된 문자열 데이터 정리 시작]")
+
+# 3.1 퍼센트 컬럼 정리
+df, conversion_results = clean_percentage_columns(df)
+
+# 3.2 체계적인 결측치 처리
 print("\n[결측치 처리 시작]")
 
-# 3.1 수치형 변수 결측치 처리
+# 3.2.1 수치형 변수 결측치 처리
 numeric_features = df.select_dtypes(include=['number']).columns
 for col in numeric_features:
     if df[col].isnull().any():
-        # % 기호 등 문자 제거 후 변환 (예: int_rate, revol_util)
-        df[col] = pd.to_numeric(df[col].astype(str).str.replace('%', ''), errors='coerce')
         mean_value = df[col].mean()
         df[col].fillna(mean_value, inplace=True)
         print(f"✓ 수치형 결측치 처리: {col} (평균값: {mean_value:.4f})")
 
-# 3.2 범주형 변수 결측치 처리
+# 3.2.2 범주형 변수 결측치 처리
 categorical_features = df.select_dtypes(include=['object']).columns
 for col in categorical_features:
     if df[col].isnull().any():
@@ -70,38 +202,118 @@ else:
     missing_cols = df.columns[df.isnull().any()].tolist()
     print(f"  남은 결측치 컬럼: {missing_cols}")
 
-# 4. 스케일링 전 최종 데이터 타입 확인 및 정리
-print("\n[스케일링 전 데이터 타입 정리]")
+# 4. 데이터 타입 검증
+print("\n[데이터 타입 검증]")
+print("-" * 40)
+
+# 4.1 퍼센트 컬럼 변환 결과 검증
+successful_conversions = [result for result in conversion_results if result['status'] == 'success']
+if successful_conversions:
+    print("✓ 성공적으로 변환된 퍼센트 컬럼들:")
+    for result in successful_conversions:
+        print(f"  - {result['column']}: {result['original_dtype']} → {result['final_dtype']}")
+        print(f"    결측치: {result['null_count']}/{result['total_count']}")
+
+# 4.2 수치형 변수 타입 확인
+numeric_cols_verified = []
 for col in numeric_cols:
     if col in df.columns:
-        # 문자열에서 % 기호 제거 및 숫자로 변환
-        if df[col].dtype == 'object' or df[col].astype(str).str.contains('%').any():
-            df[col] = pd.to_numeric(df[col].astype(str).str.replace('%', '').str.strip(), errors='coerce')
-            # 변환 후 결측치가 생긴 경우 평균값으로 대체
-            if df[col].isnull().any():
-                mean_val = df[col].mean()
-                df[col].fillna(mean_val, inplace=True)
-                print(f"✓ {col}: 문자열 → 숫자 변환 완료 (평균값: {mean_val:.4f})")
-            else:
-                print(f"✓ {col}: 문자열 → 숫자 변환 완료")
+        if pd.api.types.is_numeric_dtype(df[col]):
+            numeric_cols_verified.append(col)
+            print(f"✓ {col}: 숫자형 확인됨")
         else:
-            print(f"✓ {col}: 이미 숫자형")
+            print(f"⚠️ {col}: 숫자형이 아님 ({df[col].dtype})")
 
-# 5. 표준화(StandardScaler) 적용
-scaler_std = StandardScaler()
-df_std = df.copy()
-df_std[numeric_cols] = scaler_std.fit_transform(df[numeric_cols])
+# 검증된 수치형 변수로 업데이트
+numeric_cols = numeric_cols_verified
+print(f"\n최종 수치형 변수 개수: {len(numeric_cols)}개")
 
-# 6. 정규화(MinMaxScaler) 적용
-scaler_minmax = MinMaxScaler()
-df_minmax = df.copy()
-df_minmax[numeric_cols] = scaler_minmax.fit_transform(df[numeric_cols])
+# 5. 개선된 스케일링 적용
+print("\n[스케일링 적용]")
+print("-" * 40)
 
-# 6. 결과 저장
-ensure_directory_exists(SCALED_STANDARD_DATA_PATH.parent)
-ensure_directory_exists(SCALED_MINMAX_DATA_PATH.parent)
+if len(numeric_cols) > 0:
+    print(f"스케일링 대상 변수: {numeric_cols}")
+    
+    # 5.1 표준화(StandardScaler) 적용
+    print("\n5.1 표준화(StandardScaler) 적용")
+    try:
+        scaler_std = StandardScaler()
+        df_std = df.copy()
+        df_std[numeric_cols] = scaler_std.fit_transform(df[numeric_cols])
+        print("✓ 표준화 완료")
+        
+        # 표준화 결과 검증
+        for col in numeric_cols:
+            mean_val = df_std[col].mean()
+            std_val = df_std[col].std()
+            print(f"  {col}: 평균={mean_val:.6f}, 표준편차={std_val:.6f}")
+            
+    except Exception as e:
+        print(f"✗ 표준화 중 오류 발생: {e}")
+        df_std = df.copy()
+    
+    # 5.2 정규화(MinMaxScaler) 적용
+    print("\n5.2 정규화(MinMaxScaler) 적용")
+    try:
+        scaler_minmax = MinMaxScaler()
+        df_minmax = df.copy()
+        df_minmax[numeric_cols] = scaler_minmax.fit_transform(df[numeric_cols])
+        print("✓ 정규화 완료")
+        
+        # 정규화 결과 검증
+        for col in numeric_cols:
+            min_val = df_minmax[col].min()
+            max_val = df_minmax[col].max()
+            print(f"  {col}: 최소값={min_val:.6f}, 최대값={max_val:.6f}")
+            
+    except Exception as e:
+        print(f"✗ 정규화 중 오류 발생: {e}")
+        df_minmax = df.copy()
+    
+    # 6. 결과 저장
+    print("\n[결과 저장]")
+    print("-" * 40)
+    
+    try:
+        ensure_directory_exists(SCALED_STANDARD_DATA_PATH.parent)
+        ensure_directory_exists(SCALED_MINMAX_DATA_PATH.parent)
+        
+        df_std.to_csv(SCALED_STANDARD_DATA_PATH, index=False)
+        df_minmax.to_csv(SCALED_MINMAX_DATA_PATH, index=False)
+        
+        print(f"✓ 표준화 데이터 저장 완료: {SCALED_STANDARD_DATA_PATH}")
+        print(f"✓ 정규화 데이터 저장 완료: {SCALED_MINMAX_DATA_PATH}")
+        
+        # 저장된 파일 크기 확인
+        import os
+        std_size = os.path.getsize(SCALED_STANDARD_DATA_PATH) / (1024 * 1024)  # MB
+        minmax_size = os.path.getsize(SCALED_MINMAX_DATA_PATH) / (1024 * 1024)  # MB
+        
+        print(f"  표준화 파일 크기: {std_size:.2f} MB")
+        print(f"  정규화 파일 크기: {minmax_size:.2f} MB")
+        
+    except Exception as e:
+        print(f"✗ 파일 저장 중 오류 발생: {e}")
+        
+else:
+    print("⚠️ 경고: 스케일링할 수치형 변수가 없습니다.")
+    print("원본 데이터를 그대로 저장합니다.")
+    
+    df_std = df.copy()
+    df_minmax = df.copy()
+    
+    try:
+        ensure_directory_exists(SCALED_STANDARD_DATA_PATH.parent)
+        ensure_directory_exists(SCALED_MINMAX_DATA_PATH.parent)
+        
+        df_std.to_csv(SCALED_STANDARD_DATA_PATH, index=False)
+        df_minmax.to_csv(SCALED_MINMAX_DATA_PATH, index=False)
+        
+        print(f"✓ 원본 데이터 저장 완료")
+        
+    except Exception as e:
+        print(f"✗ 파일 저장 중 오류 발생: {e}")
 
-df_std.to_csv(SCALED_STANDARD_DATA_PATH, index=False)
-df_minmax.to_csv(SCALED_MINMAX_DATA_PATH, index=False)
-print(f"\n✓ 표준화 데이터 저장 완료: {SCALED_STANDARD_DATA_PATH}")
-print(f"✓ 정규화 데이터 저장 완료: {SCALED_MINMAX_DATA_PATH}") 
+print(f"\n[문자열 데이터 정리 및 스케일링 완료]")
+print("=" * 50) 

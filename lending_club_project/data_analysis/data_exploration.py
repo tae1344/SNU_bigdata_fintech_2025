@@ -52,6 +52,101 @@ def print_memory_usage(label="현재"):
     else:
         print(f"  {label} 메모리 사용량: 모니터링 불가")
 
+def remove_anomalous_rows(df):
+    """
+    이상 로우를 제거하는 함수 (개선된 버전)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        원본 데이터프레임
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        이상 로우가 제거된 데이터프레임
+    """
+    print("\n3. 이상 로우 제거")
+    print("-" * 40)
+    
+    # 제거 전 데이터 크기
+    original_size = len(df)
+    print(f"  제거 전 데이터 크기: {original_size:,}행")
+    
+    # 이상 로우 제거 조건들
+    removal_conditions = []
+    
+    # 1. 'Loans that do not meet the credit policy' 제거
+    if 'id' in df.columns:
+        anomalous_mask = df['id'] == 'Loans that do not meet the credit policy'
+        if anomalous_mask.any():
+            removal_conditions.append(('id', 'Loans that do not meet the credit policy', anomalous_mask.sum()))
+    
+    # 2. 빈 문자열이나 공백만 있는 로우 제거
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            empty_mask = df[col].astype(str).str.strip() == ''
+            if empty_mask.any():
+                removal_conditions.append((col, '빈 문자열', empty_mask.sum()))
+    
+    # 3. 모든 컬럼이 NaN인 로우 제거
+    all_nan_mask = df.isnull().all(axis=1)
+    if all_nan_mask.any():
+        removal_conditions.append(('모든 컬럼', '모든 값이 NaN', all_nan_mask.sum()))
+    
+    # 4. 중복 로우 제거 (선택적)
+    duplicate_mask = df.duplicated()
+    if duplicate_mask.any():
+        removal_conditions.append(('중복', '중복 로우', duplicate_mask.sum()))
+    
+    # 이상 로우 제거 실행
+    if removal_conditions:
+        print("  발견된 이상 로우:")
+        for col, reason, count in removal_conditions:
+            print(f"    - {col} ({reason}): {count:,}개")
+        
+        # 제거할 로우들의 마스크 생성
+        rows_to_remove = pd.Series([False] * len(df), index=df.index)
+        
+        for col, reason, count in removal_conditions:
+            if col == 'id':
+                rows_to_remove |= (df['id'] == 'Loans that do not meet the credit policy')
+            elif col == '모든 컬럼':
+                rows_to_remove |= df.isnull().all(axis=1)
+            elif col == '중복':
+                rows_to_remove |= df.duplicated()
+            else:
+                # 빈 문자열 제거
+                rows_to_remove |= (df[col].astype(str).str.strip() == '')
+        
+        # 이상 로우 제거
+        df_cleaned = df[~rows_to_remove].copy()
+        
+        # 제거 후 데이터 크기
+        cleaned_size = len(df_cleaned)
+        removed_count = original_size - cleaned_size
+        
+        print(f"\n  제거 후 데이터 크기: {cleaned_size:,}행")
+        print(f"  제거된 로우 수: {removed_count:,}개 ({removed_count/original_size*100:.2f}%)")
+        
+        # 제거 효과 분석
+        if removed_count > 0:
+            print(f"\n  제거 효과:")
+            print(f"    - 데이터 크기 감소: {original_size:,} → {cleaned_size:,} ({removed_count/original_size*100:.2f}% 감소)")
+            print(f"    - 메모리 사용량 감소 예상")
+            
+            # 메모리 사용량 비교
+            original_memory = df.memory_usage(deep=True).sum() / 1024**2
+            cleaned_memory = df_cleaned.memory_usage(deep=True).sum() / 1024**2
+            memory_saved = original_memory - cleaned_memory
+            
+            print(f"    - 메모리 사용량: {original_memory:.2f} MB → {cleaned_memory:.2f} MB ({memory_saved:.2f} MB 절약)")
+        
+        return df_cleaned
+    else:
+        print("  발견된 이상 로우가 없습니다.")
+        return df
+
 def load_and_explore_data(file_path):
     """
     Lending Club 데이터를 로드하고 기본 구조를 파악하는 함수
@@ -106,6 +201,10 @@ def load_and_explore_data(file_path):
     print("-" * 40)
     print(f"데이터셋 크기: {df.shape[0]:,}행 × {df.shape[1]}열")
     print(f"메모리 사용량: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+    
+    # 3. 이상 로우 제거 (메인에서 처리하므로 여기서는 제거)
+    # original_df = df.copy()  # 원본 데이터 보존
+    # df = remove_anomalous_rows(df)
     
     # 3. 데이터 타입 분석
     print("\n3. 데이터 타입 분석")
@@ -200,36 +299,58 @@ def load_and_explore_data(file_path):
     
     return df
 
-def create_data_summary_report(df, output_file=None):
+def create_data_summary_report(df, output_file=None, original_df=None):
     """
-    데이터 요약 보고서를 파일로 저장하는 함수
+    데이터 요약 보고서를 파일로 저장하는 함수 (개선된 버전)
     
     Parameters:
     -----------
     df : pandas.DataFrame
-        분석할 데이터프레임
+        분석할 데이터프레임 (이상 로우 제거 후)
     output_file : str, optional
         출력 파일 경로 (None이면 기본 경로 사용)
+    original_df : pandas.DataFrame, optional
+        원본 데이터프레임 (이상 로우 제거 전)
     """
     if output_file is None:
         output_file = str(DATA_SUMMARY_REPORT_PATH)
     
     ensure_directory_exists(Path(output_file).parent)
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write("LENDING CLUB 데이터셋 요약 보고서\n")
+        f.write("LENDING CLUB 데이터셋 요약 보고서 (개선된 버전)\n")
         f.write("=" * 50 + "\n\n")
         
         f.write(f"1. 데이터셋 기본 정보\n")
         f.write(f"   - 크기: {df.shape[0]:,}행 × {df.shape[1]}열\n")
         f.write(f"   - 메모리 사용량: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB\n\n")
         
-        f.write(f"2. 데이터 타입 분포\n")
+        # 이상 로우 제거 정보 추가
+        if original_df is not None:
+            original_size = len(original_df)
+            cleaned_size = len(df)
+            removed_count = original_size - cleaned_size
+            
+            f.write(f"2. 이상 로우 제거 정보\n")
+            f.write(f"   - 제거 전 크기: {original_size:,}행\n")
+            f.write(f"   - 제거 후 크기: {cleaned_size:,}행\n")
+            f.write(f"   - 제거된 로우: {removed_count:,}개 ({removed_count/original_size*100:.2f}%)\n")
+            
+            # 메모리 사용량 비교
+            original_memory = original_df.memory_usage(deep=True).sum() / 1024**2
+            cleaned_memory = df.memory_usage(deep=True).sum() / 1024**2
+            memory_saved = original_memory - cleaned_memory
+            
+            f.write(f"   - 제거 전 메모리: {original_memory:.2f} MB\n")
+            f.write(f"   - 제거 후 메모리: {cleaned_memory:.2f} MB\n")
+            f.write(f"   - 절약된 메모리: {memory_saved:.2f} MB\n\n")
+        
+        f.write(f"3. 데이터 타입 분포\n")
         dtype_counts = df.dtypes.value_counts()
         for dtype, count in dtype_counts.items():
             f.write(f"   - {dtype}: {count}개\n")
         f.write("\n")
         
-        f.write(f"3. 결측치 분석\n")
+        f.write(f"4. 결측치 분석\n")
         missing_data = df.isnull().sum()
         missing_percent = (missing_data / len(df)) * 100
         missing_df = pd.DataFrame({
@@ -240,13 +361,13 @@ def create_data_summary_report(df, output_file=None):
         f.write(f"   - 결측치가 있는 변수: {len(missing_df[missing_df['Missing_Count'] > 0])}개\n")
         f.write(f"   - 결측치가 없는 변수: {len(missing_df[missing_df['Missing_Count'] == 0])}개\n\n")
         
-        f.write(f"4. 결측치 상위 20개 변수\n")
+        f.write(f"5. 결측치 상위 20개 변수\n")
         for idx, row in missing_df.head(20).iterrows():
             f.write(f"   - {idx}: {row['Missing_Count']:,}개 ({row['Missing_Percent']:.1f}%)\n")
         f.write("\n")
         
         if 'loan_status' in df.columns:
-            f.write(f"5. loan_status 분포\n")
+            f.write(f"6. loan_status 분포\n")
             loan_status_counts = df['loan_status'].value_counts()
             for status, count in loan_status_counts.items():
                 percent = (count / len(df)) * 100
@@ -342,8 +463,14 @@ if __name__ == "__main__":
     df = load_and_explore_data(file_path)
     
     if df is not None:
-        # 데이터 요약 보고서 생성
-        create_data_summary_report(df)
+        # 원본 데이터 보존 (이상 로우 제거 전)
+        original_df = df.copy()
+        
+        # 이상 로우 제거
+        df = remove_anomalous_rows(df)
+        
+        # 데이터 요약 보고서 생성 (원본 데이터 포함)
+        create_data_summary_report(df, original_df=original_df)
         
         # 변수별 결측치 요약 저장
         save_variable_missing_summary(df)
