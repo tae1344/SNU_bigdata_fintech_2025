@@ -6,14 +6,19 @@ from pathlib import Path
 import warnings
 import sys
 import os
+from scipy import stats
+from scipy.stats import chi2_contingency
+import psutil
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from config.file_paths import (
     RAW_DATA_PATH,
     DATA_SUMMARY_REPORT_PATH,
     VARIABLE_MISSING_SUMMARY_PATH,
+    REPORTS_DIR,
     ensure_directory_exists,
-    file_exists
+    file_exists,
+    get_reports_file_path
 )
 
 warnings.filterwarnings('ignore')
@@ -419,7 +424,7 @@ def plot_data_overview(df):
     
     plt.tight_layout()
     plt.savefig('data_overview.png', dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     print("✓ 데이터 개요 시각화가 'data_overview.png'에 저장되었습니다.")
 
@@ -449,6 +454,529 @@ def save_variable_missing_summary(df, output_file=None):
     summary_df.to_csv(output_file, sep='\t', index=False)
     print(f"\n✓ 변수별 결측치 요약이 '{output_file}'에 저장되었습니다.")
 
+def detect_outliers(df, columns=None, method='iqr'):
+    """
+    이상값을 검출하는 함수
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    columns : list, optional
+        분석할 컬럼 리스트 (None이면 수치형 컬럼 모두)
+    method : str
+        이상값 검출 방법 ('iqr', 'zscore', 'isolation_forest')
+    
+    Returns:
+    --------
+    dict
+        각 컬럼별 이상값 정보
+    """
+    if columns is None:
+        columns = df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    outlier_info = {}
+    
+    for col in columns:
+        if col not in df.columns:
+            continue
+            
+        data = df[col].dropna()
+        if len(data) == 0:
+            continue
+            
+        if method == 'iqr':
+            Q1 = data.quantile(0.25)
+            Q3 = data.quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            outliers = data[(data < lower_bound) | (data > upper_bound)]
+            
+        elif method == 'zscore':
+            z_scores = np.abs(stats.zscore(data))
+            outliers = data[z_scores > 3]
+            
+        else:
+            continue
+            
+        outlier_info[col] = {
+            'count': len(outliers),
+            'percentage': len(outliers) / len(data) * 100,
+            'outlier_values': outliers.tolist()
+        }
+    
+    return outlier_info
+
+def analyze_categorical_variables(df, target_col='loan_status'):
+    """
+    범주형 변수별 통계적 검증을 수행하는 함수
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    target_col : str
+        타겟 변수명
+    
+    Returns:
+    --------
+    dict
+        범주형 변수별 분석 결과
+    """
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    results = {}
+    
+    # 타겟 변수 이진화
+    if target_col in df.columns:
+        df['target'] = df[target_col].apply(
+            lambda x: 1 if x in ['Default', 'Charged Off', 'Late (31-120 days)', 'Late (16-30 days)'] else 0
+        )
+        target_col = 'target'
+    
+    for col in categorical_cols:
+        if col == target_col:
+            continue
+            
+        # 결측치가 너무 많은 변수는 제외
+        missing_pct = df[col].isnull().sum() / len(df) * 100
+        if missing_pct > 50:
+            continue
+            
+        # 범주별 분포
+        value_counts = df[col].value_counts()
+        
+        # 범주별 부도율 계산
+        if target_col in df.columns:
+            default_rates = df.groupby(col)[target_col].agg(['count', 'sum', 'mean'])
+            default_rates.columns = ['total_count', 'default_count', 'default_rate']
+        else:
+            default_rates = None
+        
+        # 카이제곱 독립성 검정
+        if target_col in df.columns and len(value_counts) > 1:
+            contingency_table = pd.crosstab(df[col], df[target_col])
+            if contingency_table.shape[0] > 1 and contingency_table.shape[1] > 1:
+                try:
+                    chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+                    chi2_result = {
+                        'chi2_statistic': chi2,
+                        'p_value': p_value,
+                        'degrees_of_freedom': dof,
+                        'is_significant': p_value < 0.05
+                    }
+                except:
+                    chi2_result = None
+            else:
+                chi2_result = None
+        else:
+            chi2_result = None
+        
+        results[col] = {
+            'value_counts': value_counts,
+            'default_rates': default_rates,
+            'chi2_test': chi2_result,
+            'missing_percentage': missing_pct
+        }
+    
+    return results
+
+def create_dual_axis_plot(df, col, target_col='target', output_file=None):
+    """
+    이중 축 시각화 함수 (개선된 버전)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        데이터프레임
+    col : str
+        시각화할 컬럼명
+    target_col : str
+        타겟 변수명
+    output_file : str, optional
+        출력 파일 경로
+    """
+    if output_file is None:
+        output_file = f'{col}_dual_axis.png'
+    
+    try:
+        # 데이터 준비
+        value_counts = df[col].value_counts().head(10)  # 상위 10개만
+        default_rates = df.groupby(col)[target_col].mean().loc[value_counts.index]
+        
+        # 시각화
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+        
+        # 막대 그래프 (개수)
+        bars = ax1.bar(range(len(value_counts)), value_counts.values, alpha=0.7, color='skyblue')
+        ax1.set_xlabel(col)
+        ax1.set_ylabel('개수', color='skyblue')
+        ax1.tick_params(axis='y', labelcolor='skyblue')
+        
+        # 이중 축 (부도율)
+        ax2 = ax1.twinx()
+        ax2.plot(range(len(default_rates)), default_rates.values, 'ro-', linewidth=2, markersize=8)
+        ax2.set_ylabel('부도율', color='red')
+        ax2.tick_params(axis='y', labelcolor='red')
+        
+        # x축 레이블
+        plt.xticks(range(len(value_counts)), value_counts.index, rotation=45, ha='right')
+        plt.title(f'{col} - 개수 및 부도율')
+        
+        plt.tight_layout()
+        plt.savefig(output_file, dpi=150, bbox_inches='tight')  # dpi 낮춤
+        plt.close()
+        
+        print(f"✓ {col} 이중 축 시각화가 '{output_file}'에 저장되었습니다.")
+        
+    except Exception as e:
+        print(f"❌ {col} 이중 축 시각화 중 오류 발생: {e}")
+
+def enhanced_data_quality_report(df, output_file=None):
+    """
+    향상된 데이터 품질 검증 리포트를 생성하는 함수
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    output_file : str, optional
+        출력 파일 경로
+    """
+    if output_file is None:
+        output_file = get_reports_file_path('enhanced_data_quality_report.txt')
+    
+    ensure_directory_exists(Path(output_file).parent)
+    
+    print("\n" + "=" * 80)
+    print("향상된 데이터 품질 검증 리포트 생성")
+    print("=" * 80)
+    
+    try:
+        # 메모리 사용량 분석
+        print("\n1. 메모리 사용량 분석")
+        print("-" * 40)
+        memory_info = monitor_memory_usage()
+        if memory_info:
+            print(f"  현재 메모리 사용량: {memory_info['rss_mb']:.2f} MB")
+            print(f"  가상 메모리 사용량: {memory_info['vms_mb']:.2f} MB")
+            print(f"  시스템 대비 사용률: {memory_info['percent']:.1f}%")
+        
+        # 데이터 기본 정보
+        print("\n2. 데이터 기본 정보")
+        print("-" * 40)
+        print(f"  데이터 크기: {df.shape[0]:,}행 × {df.shape[1]}열")
+        
+        # 메모리 사용량 계산을 더 안전하게
+        try:
+            memory_usage = df.memory_usage(deep=True).sum() / 1024**2
+            print(f"  메모리 사용량: {memory_usage:.2f} MB")
+        except Exception as e:
+            print(f"  메모리 사용량 계산 실패: {e}")
+            memory_usage = 0
+        
+        # 결측치 분석
+        print("\n3. 결측치 분석")
+        print("-" * 40)
+        missing_data = df.isnull().sum()
+        missing_percent = (missing_data / len(df)) * 100
+        missing_df = pd.DataFrame({
+            'Missing_Count': missing_data,
+            'Missing_Percent': missing_percent
+        }).sort_values('Missing_Percent', ascending=False)
+        
+        print(f"  결측치가 있는 변수: {len(missing_data[missing_data > 0])}개")
+        print(f"  결측치가 없는 변수: {len(missing_data[missing_data == 0])}개")
+        print(f"  평균 결측치 비율: {missing_percent.mean():.2f}%")
+        
+        # 이상값 검출 (수치형 변수만, 메모리 효율성을 위해)
+        print("\n4. 이상값 검출")
+        print("-" * 40)
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        print(f"  수치형 변수 수: {len(numeric_cols)}개")
+        
+        # 대용량 데이터의 경우 샘플링하여 이상값 검출
+        if len(df) > 100000:
+            print("  대용량 데이터로 인해 샘플링하여 이상값 검출")
+            sample_df = df.sample(n=100000, random_state=42)
+            outlier_info = detect_outliers(sample_df, method='iqr')
+        else:
+            outlier_info = detect_outliers(df, method='iqr')
+        
+        print(f"  이상값이 있는 수치형 변수: {len(outlier_info)}개")
+        
+        for col, info in list(outlier_info.items())[:10]:  # 상위 10개만 출력
+            print(f"    {col}: {info['count']:,}개 ({info['percentage']:.2f}%)")
+        
+        # 범주형 변수 분석 (메모리 효율성을 위해 제한)
+        print("\n5. 범주형 변수 통계적 검증")
+        print("-" * 40)
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        print(f"  범주형 변수 수: {len(categorical_cols)}개")
+        
+        # 대용량 데이터의 경우 샘플링
+        if len(df) > 100000:
+            print("  대용량 데이터로 인해 샘플링하여 범주형 변수 분석")
+            sample_df = df.sample(n=100000, random_state=42)
+            categorical_results = analyze_categorical_variables(sample_df)
+        else:
+            categorical_results = analyze_categorical_variables(df)
+        
+        print(f"  분석된 범주형 변수: {len(categorical_results)}개")
+        
+        significant_vars = []
+        for col, result in categorical_results.items():
+            if result['chi2_test'] and result['chi2_test']['is_significant']:
+                significant_vars.append(col)
+        
+        print(f"  타겟과 유의한 관계가 있는 변수: {len(significant_vars)}개")
+        
+        # 중복 데이터 분석
+        print("\n6. 중복 데이터 분석")
+        print("-" * 40)
+        duplicate_rows = df.duplicated().sum()
+        duplicate_percent = duplicate_rows / len(df) * 100
+        print(f"  중복 행: {duplicate_rows:,}개 ({duplicate_percent:.2f}%)")
+        
+        # 데이터 타입 분석
+        print("\n7. 데이터 타입 분석")
+        print("-" * 40)
+        dtype_counts = df.dtypes.value_counts()
+        for dtype, count in dtype_counts.items():
+            print(f"  {dtype}: {count}개")
+        
+        # 리포트 파일 생성
+        print(f"\n8. 리포트 파일 생성 중...")
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write("향상된 데이터 품질 검증 리포트\n")
+            f.write("=" * 80 + "\n\n")
+            
+            f.write("1. 메모리 사용량 분석\n")
+            f.write("-" * 40 + "\n")
+            if memory_info:
+                f.write(f"현재 메모리 사용량: {memory_info['rss_mb']:.2f} MB\n")
+                f.write(f"가상 메모리 사용량: {memory_info['vms_mb']:.2f} MB\n")
+                f.write(f"시스템 대비 사용률: {memory_info['percent']:.1f}%\n")
+            
+            f.write(f"\n2. 데이터 기본 정보\n")
+            f.write("-" * 40 + "\n")
+            f.write(f"데이터 크기: {df.shape[0]:,}행 × {df.shape[1]}열\n")
+            f.write(f"메모리 사용량: {memory_usage:.2f} MB\n")
+            
+            f.write(f"\n3. 결측치 분석\n")
+            f.write("-" * 40 + "\n")
+            f.write(f"결측치가 있는 변수: {len(missing_data[missing_data > 0])}개\n")
+            f.write(f"결측치가 없는 변수: {len(missing_data[missing_data == 0])}개\n")
+            f.write(f"평균 결측치 비율: {missing_percent.mean():.2f}%\n")
+            
+            f.write(f"\n4. 이상값 분석\n")
+            f.write("-" * 40 + "\n")
+            f.write(f"이상값이 있는 수치형 변수: {len(outlier_info)}개\n")
+            for col, info in outlier_info.items():
+                f.write(f"{col}: {info['count']:,}개 ({info['percentage']:.2f}%)\n")
+            
+            f.write(f"\n5. 범주형 변수 통계적 검증\n")
+            f.write("-" * 40 + "\n")
+            f.write(f"분석된 범주형 변수: {len(categorical_results)}개\n")
+            f.write(f"타겟과 유의한 관계가 있는 변수: {len(significant_vars)}개\n")
+            
+            for col in significant_vars:
+                result = categorical_results[col]
+                f.write(f"\n{col}:\n")
+                f.write(f"  카이제곱 통계량: {result['chi2_test']['chi2_statistic']:.4f}\n")
+                f.write(f"  p-value: {result['chi2_test']['p_value']:.6f}\n")
+                f.write(f"  자유도: {result['chi2_test']['degrees_of_freedom']}\n")
+            
+            f.write(f"\n6. 중복 데이터 분석\n")
+            f.write("-" * 40 + "\n")
+            f.write(f"중복 행: {duplicate_rows:,}개 ({duplicate_percent:.2f}%)\n")
+            
+            f.write(f"\n7. 데이터 타입 분석\n")
+            f.write("-" * 40 + "\n")
+            for dtype, count in dtype_counts.items():
+                f.write(f"{dtype}: {count}개\n")
+        
+        print(f"✓ 향상된 데이터 품질 검증 리포트가 '{output_file}'에 저장되었습니다.")
+        
+        return {
+            'memory_info': memory_info,
+            'missing_analysis': missing_df,
+            'outlier_info': outlier_info,
+            'categorical_results': categorical_results,
+            'duplicate_rows': duplicate_rows,
+            'significant_vars': significant_vars
+        }
+        
+    except Exception as e:
+        print(f"❌ 데이터 품질 검증 중 오류 발생: {e}")
+        return None
+
+def create_quality_visualizations(df, output_dir=None):
+    """
+    중요 데이터 품질 지표만 시각화하는 함수 (최적화됨)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    output_dir : str, optional
+        출력 디렉토리 경로
+    """
+    if output_dir is None:
+        output_dir = REPORTS_DIR
+    
+    ensure_directory_exists(Path(output_dir))
+    
+    print("\n8. 중요 데이터 품질 지표 시각화 생성")
+    print("-" * 40)
+    
+    try:
+        # 대용량 데이터의 경우 샘플링
+        if len(df) > 50000:
+            print("  대용량 데이터로 인해 샘플링하여 시각화")
+            sample_df = df.sample(n=50000, random_state=42)
+        else:
+            sample_df = df
+        
+        # 1. 결측치 분포 시각화 (상위 10개만)
+        missing_data = sample_df.isnull().sum()
+        missing_percent = (missing_data / len(sample_df)) * 100
+        missing_df = pd.DataFrame({
+            'Missing_Percent': missing_percent
+        }).sort_values('Missing_Percent', ascending=False)
+        
+        plt.figure(figsize=(10, 6))
+        plt.subplot(1, 2, 1)
+        top_missing = missing_df.head(10)
+        plt.barh(range(len(top_missing)), top_missing['Missing_Percent'])
+        plt.yticks(range(len(top_missing)), top_missing.index, fontsize=8)
+        plt.xlabel('결측치 비율 (%)')
+        plt.title('결측치 상위 10개 변수')
+        
+        # 2. 데이터 타입 분포
+        dtype_counts = sample_df.dtypes.value_counts()
+        plt.subplot(1, 2, 2)
+        plt.pie(dtype_counts.values, labels=dtype_counts.index, autopct='%1.1f%%')
+        plt.title('데이터 타입 분포')
+        
+        plt.tight_layout()
+        quality_viz_path = os.path.join(output_dir, 'data_quality_visualizations.png')
+        plt.savefig(quality_viz_path, dpi=150, bbox_inches='tight')  # dpi 낮춤
+        plt.close()
+        
+        print(f"✓ 중요 데이터 품질 시각화가 '{quality_viz_path}'에 저장되었습니다.")
+        
+        # 3. 가장 중요한 범주형 변수만 이중 축 시각화 (상위 1개만)
+        print("\n9. 중요 범주형 변수 이중 축 시각화 생성")
+        print("-" * 40)
+        
+        # 타겟 변수 이진화
+        if 'loan_status' in sample_df.columns:
+            sample_df['target'] = sample_df['loan_status'].apply(
+                lambda x: 1 if x in ['Default', 'Charged Off', 'Late (31-120 days)', 'Late (16-30 days)'] else 0
+            )
+        
+        # 가장 중요한 범주형 변수 찾기 (결측치가 적고, 유의한 변수)
+        categorical_cols = sample_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        
+        if categorical_cols:
+            # 결측치가 적은 변수들 중에서 선택
+            low_missing_cols = []
+            for col in categorical_cols:
+                missing_pct = sample_df[col].isnull().sum() / len(sample_df) * 100
+                if missing_pct < 20:  # 결측치 20% 미만
+                    low_missing_cols.append(col)
+            
+            if low_missing_cols:
+                # 가장 중요한 변수 선택 (예: grade, sub_grade, home_ownership 등)
+                important_cols = ['grade', 'sub_grade', 'home_ownership', 'emp_length', 'addr_state']
+                selected_col = None
+                
+                for col in important_cols:
+                    if col in low_missing_cols:
+                        selected_col = col
+                        break
+                
+                if not selected_col and low_missing_cols:
+                    selected_col = low_missing_cols[0]
+                
+                if selected_col:
+                    dual_axis_path = os.path.join(output_dir, f'{selected_col}_dual_axis.png')
+                    create_dual_axis_plot(sample_df, selected_col, output_file=dual_axis_path)
+                    print(f"✓ 중요 변수 '{selected_col}' 이중 축 시각화 완료")
+                else:
+                    print("⚠️ 시각화할 수 있는 적절한 범주형 변수가 없습니다.")
+            else:
+                print("⚠️ 결측치가 적은 범주형 변수가 없습니다.")
+        else:
+            print("⚠️ 범주형 변수가 없습니다.")
+                
+    except Exception as e:
+        print(f"❌ 시각화 생성 중 오류 발생: {e}")
+
+def create_categorical_analysis_report(df, output_file=None):
+    """
+    범주별 부도율 분석 리포트를 생성하는 함수
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        분석할 데이터프레임
+    output_file : str, optional
+        출력 파일 경로
+    """
+    if output_file is None:
+        output_file = get_reports_file_path('categorical_analysis_report.txt')
+    
+    ensure_directory_exists(Path(output_file).parent)
+    
+    print("\n10. 범주별 부도율 분석 리포트 생성")
+    print("-" * 40)
+    
+    try:
+        # 타겟 변수 이진화
+        if 'loan_status' in df.columns:
+            df['target'] = df['loan_status'].apply(
+                lambda x: 1 if x in ['Default', 'Charged Off', 'Late (31-120 days)', 'Late (16-30 days)'] else 0
+            )
+        
+        # 대용량 데이터의 경우 샘플링
+        if len(df) > 100000:
+            print("  대용량 데이터로 인해 샘플링하여 분석")
+            sample_df = df.sample(n=100000, random_state=42)
+            categorical_results = analyze_categorical_variables(sample_df)
+        else:
+            categorical_results = analyze_categorical_variables(df)
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write("범주별 부도율 분석 리포트\n")
+            f.write("=" * 80 + "\n\n")
+            
+            for col, result in categorical_results.items():
+                f.write(f"{col}\n")
+                f.write("-" * 40 + "\n")
+                
+                if result['default_rates'] is not None:
+                    f.write("범주별 부도율:\n")
+                    f.write(result['default_rates'].to_string())
+                    f.write("\n\n")
+                
+                if result['chi2_test']:
+                    f.write("카이제곱 독립성 검정:\n")
+                    f.write(f"  카이제곱 통계량: {result['chi2_test']['chi2_statistic']:.4f}\n")
+                    f.write(f"  p-value: {result['chi2_test']['p_value']:.6f}\n")
+                    f.write(f"  자유도: {result['chi2_test']['degrees_of_freedom']}\n")
+                    f.write(f"  유의성: {'유의함' if result['chi2_test']['is_significant'] else '유의하지 않음'}\n")
+                    f.write("\n")
+                
+                f.write(f"결측치 비율: {result['missing_percentage']:.2f}%\n")
+                f.write("\n" + "=" * 80 + "\n\n")
+        
+        print(f"✓ 범주별 부도율 분석 리포트가 '{output_file}'에 저장되었습니다.")
+        
+    except Exception as e:
+        print(f"❌ 범주별 부도율 분석 리포트 생성 중 오류 발생: {e}")
+
 if __name__ == "__main__":
     # 파일 경로 설정
     file_path = str(RAW_DATA_PATH)
@@ -459,27 +987,105 @@ if __name__ == "__main__":
         print("전체 데이터셋 파일을 다운로드해주세요.")
         exit(1)
     
-    # 데이터 로드 및 분석
-    df = load_and_explore_data(file_path)
+    print("=" * 80)
+    print("데이터 분석 및 품질 검증 시작")
+    print("=" * 80)
     
-    if df is not None:
-        # 원본 데이터 보존 (이상 로우 제거 전)
+    # 시각화 옵션 설정 (사용자가 선택 가능)
+    CREATE_VISUALIZATIONS = True  # False로 설정하면 시각화 건너뛰기
+    
+    # 1단계: 데이터 로드 및 기본 분석
+    print("\n1단계: 데이터 로드 및 기본 분석")
+    print("-" * 40)
+    try:
+        df = load_and_explore_data(file_path)
+        if df is None:
+            print("❌ 데이터 로드에 실패했습니다.")
+            exit(1)
+        print("✓ 데이터 로드 및 기본 분석 완료")
+    except Exception as e:
+        print(f"❌ 데이터 로드 중 오류 발생: {e}")
+        exit(1)
+    
+    # 2단계: 이상 로우 제거
+    print("\n2단계: 이상 로우 제거")
+    print("-" * 40)
+    try:
         original_df = df.copy()
-        
-        # 이상 로우 제거
         df = remove_anomalous_rows(df)
-        
-        # 데이터 요약 보고서 생성 (원본 데이터 포함)
+        print("✓ 이상 로우 제거 완료")
+    except Exception as e:
+        print(f"❌ 이상 로우 제거 중 오류 발생: {e}")
+        print("원본 데이터로 계속 진행합니다.")
+        df = original_df
+    
+    # 3단계: 기본 데이터 요약 보고서
+    print("\n3단계: 기본 데이터 요약 보고서 생성")
+    print("-" * 40)
+    try:
         create_data_summary_report(df, original_df=original_df)
-        
-        # 변수별 결측치 요약 저장
+        print("✓ 기본 데이터 요약 보고서 생성 완료")
+    except Exception as e:
+        print(f"❌ 기본 데이터 요약 보고서 생성 중 오류 발생: {e}")
+    
+    # 4단계: 변수별 결측치 요약
+    print("\n4단계: 변수별 결측치 요약")
+    print("-" * 40)
+    try:
         save_variable_missing_summary(df)
-        
-        # 데이터 시각화
-        plot_data_overview(df)
-        
-        print("\n" + "=" * 80)
-        print("데이터 구조 파악 완료!")
-        print("=" * 80)
+        print("✓ 변수별 결측치 요약 완료")
+    except Exception as e:
+        print(f"❌ 변수별 결측치 요약 중 오류 발생: {e}")
+    
+    # 5단계: 데이터 시각화 (선택적)
+    if CREATE_VISUALIZATIONS:
+        print("\n5단계: 데이터 시각화")
+        print("-" * 40)
+        try:
+            plot_data_overview(df)
+            print("✓ 데이터 시각화 완료")
+        except Exception as e:
+            print(f"❌ 데이터 시각화 중 오류 발생: {e}")
     else:
-        print("\n데이터 로드에 실패했습니다. 파일 경로를 확인해주세요.") 
+        print("\n5단계: 데이터 시각화 건너뛰기")
+        print("-" * 40)
+        print("✓ 시각화 옵션이 비활성화되어 건너뜁니다.")
+    
+    # 6단계: 향상된 데이터 품질 검증 리포트
+    print("\n6단계: 향상된 데이터 품질 검증 리포트 생성")
+    print("-" * 40)
+    try:
+        quality_results = enhanced_data_quality_report(df)
+        if quality_results:
+            print("✓ 향상된 데이터 품질 검증 리포트 생성 완료")
+        else:
+            print("⚠️ 향상된 데이터 품질 검증 리포트 생성 실패")
+    except Exception as e:
+        print(f"❌ 향상된 데이터 품질 검증 리포트 생성 중 오류 발생: {e}")
+    
+    # 7단계: 데이터 품질 지표 시각화 (선택적)
+    if CREATE_VISUALIZATIONS:
+        print("\n7단계: 데이터 품질 지표 시각화")
+        print("-" * 40)
+        try:
+            create_quality_visualizations(df)
+            print("✓ 데이터 품질 지표 시각화 완료")
+        except Exception as e:
+            print(f"❌ 데이터 품질 지표 시각화 중 오류 발생: {e}")
+    else:
+        print("\n7단계: 데이터 품질 지표 시각화 건너뛰기")
+        print("-" * 40)
+        print("✓ 시각화 옵션이 비활성화되어 건너뜁니다.")
+    
+    # 8단계: 범주별 부도율 분석 리포트
+    print("\n8단계: 범주별 부도율 분석 리포트 생성")
+    print("-" * 40)
+    try:
+        create_categorical_analysis_report(df)
+        print("✓ 범주별 부도율 분석 리포트 생성 완료")
+    except Exception as e:
+        print(f"❌ 범주별 부도율 분석 리포트 생성 중 오류 발생: {e}")
+    
+    print("\n" + "=" * 80)
+    print("데이터 분석 및 품질 검증 완료!")
+    print("=" * 80) 

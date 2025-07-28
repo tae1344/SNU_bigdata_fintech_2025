@@ -265,7 +265,7 @@ def visualize_class_distribution(df, binary_df):
     # 디렉토리 생성 및 파일 저장
     ensure_directory_exists(CLASS_DISTRIBUTION_PLOT_PATH.parent)
     plt.savefig(str(CLASS_DISTRIBUTION_PLOT_PATH), dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     print(f"✓ 개선된 클래스 분포 시각화가 '{CLASS_DISTRIBUTION_PLOT_PATH}'에 저장되었습니다.")
 
