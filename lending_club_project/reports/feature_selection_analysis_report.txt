@@ -97,43 +97,43 @@
 5. 최종 선택된 특성들
 --------------------------------------------------
 공통 특성 (모든 방법에서 상위): 11개
-  - out_prncp
-  - total_rec_prncp
-  - last_fico_range_low
-  - recoveries
   - sub_grade
-  - bc_open_to_buy
-  - last_fico_range_high
-  - out_prncp_inv
-  - last_pymnt_amnt
   - collection_recovery_fee
   - total_rec_late_fee
+  - out_prncp_inv
+  - last_fico_range_low
+  - bc_open_to_buy
+  - last_fico_range_high
+  - last_pymnt_amnt
+  - total_rec_prncp
+  - recoveries
+  - out_prncp
 
 점수 기반 상위 특성: 25개
-   1. total_rec_prncp                | 점수: 4/4
-   2. recoveries                     | 점수: 4/4
-   3. out_prncp                      | 점수: 4/4
-   4. sub_grade                      | 점수: 4/4
-   5. last_fico_range_high           | 점수: 4/4
-   6. last_pymnt_amnt                | 점수: 4/4
-   7. total_rec_late_fee             | 점수: 4/4
-   8. last_fico_range_low            | 점수: 4/4
-   9. out_prncp_inv                  | 점수: 4/4
-  10. collection_recovery_fee        | 점수: 4/4
+   1. sub_grade                      | 점수: 4/4
+   2. total_rec_late_fee             | 점수: 4/4
+   3. last_pymnt_amnt                | 점수: 4/4
+   4. last_fico_range_high           | 점수: 4/4
+   5. recoveries                     | 점수: 4/4
+   6. out_prncp                      | 점수: 4/4
+   7. collection_recovery_fee        | 점수: 4/4
+   8. out_prncp_inv                  | 점수: 4/4
+   9. total_rec_prncp                | 점수: 4/4
+  10. last_fico_range_low            | 점수: 4/4
   11. bc_open_to_buy                 | 점수: 4/4
-  12. total_pymnt_inv                | 점수: 3/4
-  13. hardship_dpd                   | 점수: 3/4
-  14. fico_range_low                 | 점수: 3/4
-  15. id                             | 점수: 3/4
-  16. percent_bc_gt_75               | 점수: 3/4
-  17. total_pymnt                    | 점수: 3/4
+  12. percent_bc_gt_75               | 점수: 3/4
+  13. id                             | 점수: 3/4
+  14. total_pymnt                    | 점수: 3/4
+  15. fico_range_low                 | 점수: 3/4
+  16. hardship_dpd                   | 점수: 3/4
+  17. total_pymnt_inv                | 점수: 3/4
   18. int_rate                       | 점수: 3/4
-  19. inq_last_6mths                 | 점수: 2/4
-  20. bc_util                        | 점수: 2/4
-  21. mths_since_recent_bc           | 점수: 2/4
-  22. total_bc_limit                 | 점수: 2/4
-  23. open_acc_6m                    | 점수: 2/4
-  24. total_rev_hi_lim               | 점수: 2/4
+  19. mths_since_recent_bc           | 점수: 2/4
+  20. inq_last_6mths                 | 점수: 2/4
+  21. open_acc_6m                    | 점수: 2/4
+  22. fico_range_high                | 점수: 2/4
+  23. total_bc_limit                 | 점수: 2/4
+  24. bc_util                        | 점수: 2/4
   25. funded_amnt                    | 점수: 2/4
 
 6. 새로운 특성 카테고리별 분석
