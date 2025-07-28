@@ -44,6 +44,10 @@ PROJECT_PLAN_FILE = "lending_club_credit_modeling_project.md"
 COMPLETED_MILESTONES_FILE = "completed_milestones.md"
 MILESTONE_1_3_REPORT_FILE = "milestone_1_3_completion_report.md"
 
+# 모델링 관련 파일
+BASIC_MODELS_REPORT_FILE = "basic_models_performance_report.txt"
+MODEL_EVALUATION_REPORT_FILE = "model_evaluation_report.txt"
+
 # 변수 정의 파일
 VARIABLES_JS_FILE = "lending_club_variables.js"
 VARIABLES_KO_FILE = "lending_club_variables_ko.txt"
@@ -88,6 +92,12 @@ def get_tools_file_path(filename: str) -> Path:
 RAW_DATA_PATH = get_data_file_path(RAW_DATA_FILE)
 SAMPLE_DATA_PATH = get_data_file_path(SAMPLE_DATA_FILE)
 
+# 모델링 관련 경로
+MODELING_DIR = PROJECT_ROOT / "modeling"
+MODEL_DIR = PROJECT_ROOT / "models"
+BASIC_MODELS_REPORT_PATH = get_reports_file_path(BASIC_MODELS_REPORT_FILE)
+MODEL_EVALUATION_REPORT_PATH = get_reports_file_path(MODEL_EVALUATION_REPORT_FILE)
+
 ENCODED_DATA_PATH = get_feature_engineering_file_path(ENCODED_DATA_FILE)
 SCALED_STANDARD_DATA_PATH = get_feature_engineering_file_path(SCALED_STANDARD_DATA_FILE)
 SCALED_MINMAX_DATA_PATH = get_feature_engineering_file_path(SCALED_MINMAX_DATA_FILE)
@@ -128,7 +138,9 @@ def ensure_all_directories_exist() -> None:
         DOCS_DIR,
         DOCS_DIR / "project_docs",
         DOCS_DIR / "variables",
-        DOCS_DIR / "tools"
+        DOCS_DIR / "tools",
+        MODELING_DIR,
+        MODEL_DIR
     ]
     
     for directory in directories:
@@ -217,6 +229,8 @@ def print_file_paths():
     print("=== 보고서 파일 ===")
     print(f"특성 선택 전략 보고서: {FEATURE_SELECTION_REPORT_PATH}")
     print(f"특성 선택 분석 보고서: {FEATURE_SELECTION_ANALYSIS_REPORT_PATH}")
+    print(f"기본 모델 성능 보고서: {BASIC_MODELS_REPORT_PATH}")
+    print(f"모델 평가 보고서: {MODEL_EVALUATION_REPORT_PATH}")
     print(f"데이터 요약 보고서: {DATA_SUMMARY_REPORT_PATH}")
     print(f"완료된 마일스톤: {COMPLETED_MILESTONES_PATH}")
 
