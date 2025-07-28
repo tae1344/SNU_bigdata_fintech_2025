@@ -29,6 +29,7 @@ NEW_FEATURES_DATA_FILE = "lending_club_sample_with_new_features.csv"
 # 특성 선택 관련 파일
 SELECTED_FEATURES_FILE = "selected_features_final.csv"
 FEATURE_SELECTION_REPORT_FILE = "feature_selection_strategy_report.txt"
+FEATURE_SELECTION_ANALYSIS_REPORT_FILE = "feature_selection_analysis_report.txt"
 
 # 분석 결과 파일
 DATA_SUMMARY_REPORT_FILE = "data_summary_report.txt"
@@ -92,8 +93,9 @@ SCALED_STANDARD_DATA_PATH = get_feature_engineering_file_path(SCALED_STANDARD_DA
 SCALED_MINMAX_DATA_PATH = get_feature_engineering_file_path(SCALED_MINMAX_DATA_FILE)
 NEW_FEATURES_DATA_PATH = get_feature_engineering_file_path(NEW_FEATURES_DATA_FILE)
 
-SELECTED_FEATURES_PATH = get_reports_file_path(SELECTED_FEATURES_FILE)
+SELECTED_FEATURES_PATH = get_data_analysis_file_path(SELECTED_FEATURES_FILE)
 FEATURE_SELECTION_REPORT_PATH = get_reports_file_path(FEATURE_SELECTION_REPORT_FILE)
+FEATURE_SELECTION_ANALYSIS_REPORT_PATH = get_reports_file_path(FEATURE_SELECTION_ANALYSIS_REPORT_FILE)
 
 DATA_SUMMARY_REPORT_PATH = get_project_docs_file_path(DATA_SUMMARY_REPORT_FILE)
 MISSING_VALUES_PATH = get_data_analysis_file_path(MISSING_VALUES_FILE)
@@ -213,7 +215,8 @@ def print_file_paths():
     print()
     
     print("=== 보고서 파일 ===")
-    print(f"특성 선택 보고서: {FEATURE_SELECTION_REPORT_PATH}")
+    print(f"특성 선택 전략 보고서: {FEATURE_SELECTION_REPORT_PATH}")
+    print(f"특성 선택 분석 보고서: {FEATURE_SELECTION_ANALYSIS_REPORT_PATH}")
     print(f"데이터 요약 보고서: {DATA_SUMMARY_REPORT_PATH}")
     print(f"완료된 마일스톤: {COMPLETED_MILESTONES_PATH}")
 

@@ -12,6 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from config.file_paths import (
     SCALED_STANDARD_DATA_PATH,
     SELECTED_FEATURES_PATH,
+    FEATURE_SELECTION_ANALYSIS_REPORT_PATH,
     ensure_directory_exists,
     file_exists
 )
@@ -170,10 +171,10 @@ def create_feature_selection_report(importance_results, selected_features, outpu
         output_file: 출력 파일 경로 (None이면 기본 경로 사용)
     """
     if output_file is None:
-        output_file = '../reports/feature_selection_analysis_report.txt'
+        output_file = str(FEATURE_SELECTION_ANALYSIS_REPORT_PATH)
     
     ensure_directory_exists(Path(output_file).parent)
-    """
+    
     print(f"📝 특성 선택 보고서 생성 중... ({output_file})")
     
     with open(output_file, 'w', encoding='utf-8') as f:

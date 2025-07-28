@@ -14,6 +14,7 @@ __all__ = [
     'REPORTS_DIR',
     'DOCS_DIR',
     'FEATURE_SELECTION_REPORT_PATH',
+    'FEATURE_SELECTION_ANALYSIS_REPORT_PATH',
     'ensure_directory_exists',
     'file_exists',
     'get_file_size_mb',
