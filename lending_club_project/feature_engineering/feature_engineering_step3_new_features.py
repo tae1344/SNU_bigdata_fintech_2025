@@ -4,6 +4,7 @@ from datetime import datetime
 import warnings
 import sys
 import os
+from sklearn.preprocessing import OrdinalEncoder
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from config.file_paths import (
@@ -14,6 +15,218 @@ from config.file_paths import (
 )
 
 warnings.filterwarnings('ignore')
+
+def create_fico_features(df):
+    """
+    FICO 점수 관련 특성을 체계적으로 생성하는 함수 (개선된 버전)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        원본 데이터프레임
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        FICO 특성이 추가된 데이터프레임
+    """
+    print("\n[FICO 점수 특성 생성 시작]")
+    print("-" * 50)
+    
+    # FICO 관련 컬럼 확인
+    fico_columns = ['fico_range_low', 'fico_range_high', 
+                   'last_fico_range_low', 'last_fico_range_high']
+    
+    available_fico_cols = [col for col in fico_columns if col in df.columns]
+    print(f"사용 가능한 FICO 컬럼: {available_fico_cols}")
+    
+    if len(available_fico_cols) < 2:
+        print("⚠️ 경고: FICO 컬럼이 부족하여 기본 특성만 생성합니다.")
+        return df
+    
+    # 1. FICO 평균값 계산 (개선된 로직)
+    print("\n1. FICO 평균값 계산")
+    print("-" * 30)
+    
+    # 현재 FICO 평균
+    if 'fico_range_low' in df.columns and 'fico_range_high' in df.columns:
+        df['fico_avg'] = (pd.to_numeric(df['fico_range_low'], errors='coerce') + 
+                          pd.to_numeric(df['fico_range_high'], errors='coerce')) / 2
+        print(f"✓ 현재 FICO 평균 계산 완료")
+        print(f"  평균값 범위: {df['fico_avg'].min():.1f} ~ {df['fico_avg'].max():.1f}")
+    
+    # 최근 FICO 평균
+    if 'last_fico_range_low' in df.columns and 'last_fico_range_high' in df.columns:
+        df['last_fico_avg'] = (pd.to_numeric(df['last_fico_range_low'], errors='coerce') + 
+                               pd.to_numeric(df['last_fico_range_high'], errors='coerce')) / 2
+        print(f"✓ 최근 FICO 평균 계산 완료")
+        print(f"  평균값 범위: {df['last_fico_avg'].min():.1f} ~ {df['last_fico_avg'].max():.1f}")
+    
+    # 2. FICO 변화율 계산
+    print("\n2. FICO 변화율 계산")
+    print("-" * 30)
+    
+    if 'fico_avg' in df.columns and 'last_fico_avg' in df.columns:
+        # 절대 변화량
+        df['fico_change'] = df['last_fico_avg'] - df['fico_avg']
+        
+        # 상대 변화율 (안전한 계산)
+        df['fico_change_rate'] = np.where(
+            df['fico_avg'] > 0,
+            df['fico_change'] / df['fico_avg'],
+            0
+        )
+        
+        print(f"✓ FICO 변화율 계산 완료")
+        print(f"  변화량 범위: {df['fico_change'].min():.1f} ~ {df['fico_change'].max():.1f}")
+        print(f"  변화율 범위: {df['fico_change_rate'].min():.3f} ~ {df['fico_change_rate'].max():.3f}")
+    
+    # 3. FICO 범위 계산
+    print("\n3. FICO 범위 계산")
+    print("-" * 30)
+    
+    if 'fico_range_low' in df.columns and 'fico_range_high' in df.columns:
+        df['fico_range'] = (pd.to_numeric(df['fico_range_high'], errors='coerce') - 
+                           pd.to_numeric(df['fico_range_low'], errors='coerce'))
+        print(f"✓ 현재 FICO 범위 계산 완료")
+        print(f"  범위 평균: {df['fico_range'].mean():.1f}")
+    
+    if 'last_fico_range_low' in df.columns and 'last_fico_range_high' in df.columns:
+        df['last_fico_range'] = (pd.to_numeric(df['last_fico_range_high'], errors='coerce') - 
+                                pd.to_numeric(df['last_fico_range_low'], errors='coerce'))
+        print(f"✓ 최근 FICO 범위 계산 완료")
+        print(f"  범위 평균: {df['last_fico_range'].mean():.1f}")
+    
+    # 4. 5점 단위 구간화 (개선된 로직)
+    print("\n4. FICO 5점 단위 구간화")
+    print("-" * 30)
+    
+    if 'fico_avg' in df.columns:
+        # 5점 단위 구간 생성 (300-850 범위)
+        fico_bins = list(range(300, 855, 5))  # 300, 305, 310, ..., 850
+        fico_labels = [f"{fico_bins[i]}-{fico_bins[i+1]-1}" for i in range(len(fico_bins)-1)]
+        
+        # 구간화 적용
+        df['fico_5point_bins'] = pd.cut(
+            df['fico_avg'], 
+            bins=fico_bins, 
+            labels=fico_labels,
+            include_lowest=True,
+            right=False
+        )
+        
+        print(f"✓ FICO 5점 단위 구간화 완료")
+        print(f"  구간 개수: {len(fico_labels)}개")
+        print(f"  구간 범위: {fico_labels[0]} ~ {fico_labels[-1]}")
+        
+        # 구간별 분포 확인
+        bin_counts = df['fico_5point_bins'].value_counts().head(10)
+        print(f"  상위 10개 구간 분포:")
+        for bin_name, count in bin_counts.items():
+            print(f"    {bin_name}: {count}개")
+    
+    # 5. Ordered Category dtype 변환
+    print("\n5. Ordered Category 변환")
+    print("-" * 30)
+    
+    if 'fico_5point_bins' in df.columns:
+        # Ordered Category로 변환
+        df['fico_5point_bins'] = df['fico_5point_bins'].astype('category')
+        df['fico_5point_bins'] = df['fico_5point_bins'].cat.reorder_categories(
+            df['fico_5point_bins'].cat.categories, ordered=True
+        )
+        
+        print(f"✓ Ordered Category 변환 완료")
+        print(f"  카테고리 타입: {df['fico_5point_bins'].dtype}")
+        print(f"  순서 여부: {df['fico_5point_bins'].cat.ordered}")
+    
+    # 6. Ordinal encoding 적용
+    print("\n6. Ordinal Encoding 적용")
+    print("-" * 30)
+    
+    if 'fico_5point_bins' in df.columns:
+        # OrdinalEncoder 사용
+        encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+        
+        # 2D 배열로 변환
+        fico_bins_2d = df['fico_5point_bins'].values.reshape(-1, 1)
+        
+        # 인코딩 적용
+        fico_encoded = encoder.fit_transform(fico_bins_2d)
+        df['fico_5point_ordinal'] = fico_encoded.flatten()
+        
+        print(f"✓ Ordinal Encoding 완료")
+        print(f"  인코딩 범위: {df['fico_5point_ordinal'].min()} ~ {df['fico_5point_ordinal'].max()}")
+        
+        # 인코딩 매핑 확인
+        unique_bins = df['fico_5point_bins'].unique()
+        unique_ordinals = df['fico_5point_ordinal'].unique()
+        print(f"  고유 구간 수: {len(unique_bins)}")
+        print(f"  고유 인코딩 수: {len(unique_ordinals)}")
+    
+    # 7. FICO 위험도 구간화
+    print("\n7. FICO 위험도 구간화")
+    print("-" * 30)
+    
+    if 'fico_avg' in df.columns:
+        # 위험도 구간 정의 (6개 구간이므로 7개의 경계값 필요)
+        risk_bins = [0, 580, 670, 740, 800, 850, float('inf')]
+        risk_labels = ['Very Poor', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent']
+        
+        df['fico_risk_category'] = pd.cut(
+            df['fico_avg'],
+            bins=risk_bins,
+            labels=risk_labels,
+            include_lowest=True
+        )
+        
+        # 위험도 점수 (낮을수록 위험)
+        risk_scores = {'Very Poor': 1, 'Poor': 2, 'Fair': 3, 'Good': 4, 'Very Good': 5, 'Excellent': 6}
+        df['fico_risk_score'] = df['fico_risk_category'].map(risk_scores)
+        
+        print(f"✓ FICO 위험도 구간화 완료")
+        print(f"  위험도 분포:")
+        risk_dist = df['fico_risk_category'].value_counts()
+        for risk_level, count in risk_dist.items():
+            print(f"    {risk_level}: {count}개")
+    
+    # 8. FICO 변화 패턴 분석
+    print("\n8. FICO 변화 패턴 분석")
+    print("-" * 30)
+    
+    if 'fico_change' in df.columns:
+        # 변화 패턴 분류
+        df['fico_change_pattern'] = np.where(
+            df['fico_change'] > 10, 'Significant_Improvement',
+            np.where(df['fico_change'] > 0, 'Slight_Improvement',
+                    np.where(df['fico_change'] > -10, 'Slight_Decline', 'Significant_Decline'))
+        )
+        
+        # 변화 패턴 점수
+        pattern_scores = {
+            'Significant_Improvement': 4,
+            'Slight_Improvement': 3,
+            'Slight_Decline': 2,
+            'Significant_Decline': 1
+        }
+        df['fico_change_score'] = df['fico_change_pattern'].map(pattern_scores)
+        
+        print(f"✓ FICO 변화 패턴 분석 완료")
+        print(f"  변화 패턴 분포:")
+        pattern_dist = df['fico_change_pattern'].value_counts()
+        for pattern, count in pattern_dist.items():
+            print(f"    {pattern}: {count}개")
+    
+    print(f"\n[FICO 특성 생성 완료]")
+    print("=" * 50)
+    
+    # 생성된 FICO 특성 목록
+    fico_features = [col for col in df.columns if 'fico' in col.lower()]
+    print(f"생성된 FICO 특성: {len(fico_features)}개")
+    for feature in fico_features:
+        print(f"  - {feature}")
+    
+    return df
 
 def safe_numeric_conversion(series, default_value=0):
     """안전한 숫자 변환 함수"""
@@ -34,20 +247,11 @@ def create_new_features(df):
     """
     print("🔄 새로운 특성 생성 시작...")
     
-    # 1. 신용 점수 관련 특성
+    # 1. 신용 점수 관련 특성 (개선된 FICO 처리)
     print("📊 1. 신용 점수 관련 특성 생성 중...")
     
-    # FICO 점수 변화
-    df['fico_change'] = safe_numeric_conversion(df['last_fico_range_high']) - safe_numeric_conversion(df['fico_range_high'])
-    df['fico_change_rate'] = (safe_numeric_conversion(df['last_fico_range_high']) - safe_numeric_conversion(df['fico_range_high'])) / (safe_numeric_conversion(df['fico_range_high']) + 1e-8)
-    
-    # FICO 점수 평균
-    df['fico_avg'] = (safe_numeric_conversion(df['fico_range_low']) + safe_numeric_conversion(df['fico_range_high'])) / 2
-    df['last_fico_avg'] = (safe_numeric_conversion(df['last_fico_range_low']) + safe_numeric_conversion(df['last_fico_range_high'])) / 2
-    
-    # FICO 점수 범위
-    df['fico_range'] = safe_numeric_conversion(df['fico_range_high']) - safe_numeric_conversion(df['fico_range_low'])
-    df['last_fico_range'] = safe_numeric_conversion(df['last_fico_range_high']) - safe_numeric_conversion(df['last_fico_range_low'])
+    # 개선된 FICO 특성 생성
+    df = create_fico_features(df)
     
     # 2. 신용 이용률 관련 특성
     print("💳 2. 신용 이용률 관련 특성 생성 중...")
@@ -277,14 +481,17 @@ def main():
         # 생성된 특성 요약
         print("\n📋 생성된 새로운 특성 요약:")
         new_features = [
-            'fico_change', 'fico_change_rate', 'fico_avg', 'last_fico_avg',
-            'fico_range', 'last_fico_range', 'avg_credit_utilization', 'util_diff',
-            'credit_util_risk', 'loan_to_income_ratio', 'total_debt_to_income',
-            'payment_to_income_ratio', 'income_category', 'delinquency_severity',
-            'has_delinquency', 'has_serious_delinquency', 'delinquency_recency',
-            'account_density', 'credit_account_diversity', 'recent_account_activity',
-            'credit_history_length', 'emp_length_numeric', 'term_months',
-            'int_rate_category', 'grade_numeric', 'state_loan_frequency',
+            # FICO 관련 특성 (개선된 버전)
+            'fico_avg', 'last_fico_avg', 'fico_change', 'fico_change_rate',
+            'fico_range', 'last_fico_range', 'fico_5point_bins', 'fico_5point_ordinal',
+            'fico_risk_category', 'fico_risk_score', 'fico_change_pattern', 'fico_change_score',
+            # 기타 특성
+            'avg_credit_utilization', 'util_diff', 'credit_util_risk', 'loan_to_income_ratio', 
+            'total_debt_to_income', 'payment_to_income_ratio', 'income_category', 
+            'delinquency_severity', 'has_delinquency', 'has_serious_delinquency', 
+            'delinquency_recency', 'account_density', 'credit_account_diversity', 
+            'recent_account_activity', 'credit_history_length', 'emp_length_numeric', 
+            'term_months', 'int_rate_category', 'grade_numeric', 'state_loan_frequency',
             'purpose_risk', 'comprehensive_risk_score', 'credit_health_score',
             'inquiry_pattern', 'account_opening_pattern', 'fico_dti_interaction',
             'income_util_interaction', 'loan_int_interaction'
@@ -292,15 +499,43 @@ def main():
         
         print(f"🎯 총 {len(new_features)}개의 새로운 특성이 생성되었습니다.")
         
+        # 범주형 특성 상세 분석
+        print("\n📊 범주형 특성 상세 분석:")
+        categorical_features = ['fico_5point_bins', 'fico_risk_category', 'fico_change_pattern']
+        for feature in categorical_features:
+            if feature in df_with_new_features.columns:
+                print(f"\n  {feature}:")
+                value_counts = df_with_new_features[feature].value_counts()
+                print(f"    총 고유값: {len(value_counts)}개")
+                print(f"    상위 5개 분포:")
+                for i, (value, count) in enumerate(value_counts.head().items()):
+                    percentage = (count / len(df_with_new_features)) * 100
+                    print(f"      {value}: {count}개 ({percentage:.1f}%)")
+        
         # 특성별 기본 통계
         print("\n📊 주요 새로운 특성 통계:")
         for feature in new_features[:10]:  # 처음 10개만 표시
             if feature in df_with_new_features.columns:
                 try:
-                    mean_val = df_with_new_features[feature].describe()['mean']
-                    print(f"  {feature}: {mean_val:.3f} (평균)")
-                except:
-                    print(f"  {feature}: 통계 계산 불가")
+                    # 범주형 특성인지 확인
+                    if df_with_new_features[feature].dtype == 'category' or df_with_new_features[feature].dtype == 'object':
+                        # 범주형 특성의 경우 분포 정보 출력
+                        value_counts = df_with_new_features[feature].value_counts()
+                        print(f"  {feature}: 범주형 특성")
+                        print(f"    고유값 개수: {len(value_counts)}")
+                        print(f"    최빈값: {value_counts.index[0]} ({value_counts.iloc[0]}개)")
+                        if len(value_counts) > 1:
+                            print(f"    두 번째 빈도: {value_counts.index[1]} ({value_counts.iloc[1]}개)")
+                    else:
+                        # 수치형 특성의 경우 상세 통계 출력
+                        desc = df_with_new_features[feature].describe()
+                        mean_val = desc['mean']
+                        std_val = desc['std']
+                        min_val = desc['min']
+                        max_val = desc['max']
+                        print(f"  {feature}: 평균={mean_val:.3f}, 표준편차={std_val:.3f}, 범위=[{min_val:.1f}, {max_val:.1f}]")
+                except Exception as e:
+                    print(f"  {feature}: 통계 계산 불가 (오류: {str(e)[:50]})")
         
     except Exception as e:
         print(f"❌ 오류 발생: {e}")

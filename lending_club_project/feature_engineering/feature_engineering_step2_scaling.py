@@ -12,11 +12,221 @@ from config.file_paths import (
     ENCODED_DATA_PATH,
     SCALED_STANDARD_DATA_PATH,
     SCALED_MINMAX_DATA_PATH,
+    REPORTS_DIR,
     ensure_directory_exists,
-    file_exists
+    file_exists,
+    get_reports_file_path
 )
 
 warnings.filterwarnings('ignore')
+
+def handle_outliers(df):
+    """
+    이상값을 체계적으로 처리하는 함수 (개선된 버전)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        처리할 데이터프레임
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        이상값이 처리된 데이터프레임
+    """
+    print("\n[이상값 처리 시작]")
+    print("=" * 50)
+    
+    outlier_results = {}
+    
+    # 1. dti 999 이상값 처리
+    print("\n1. dti 999 이상값 처리")
+    print("-" * 30)
+    
+    if 'dti' in df.columns:
+        original_dti_stats = df['dti'].describe()
+        print(f"  처리 전 dti 통계:")
+        print(f"    평균: {original_dti_stats['mean']:.2f}")
+        print(f"    표준편차: {original_dti_stats['std']:.2f}")
+        print(f"    최대값: {original_dti_stats['max']:.2f}")
+        
+        # 999 이상값 개수 확인
+        outliers_999 = (df['dti'] >= 999).sum()
+        print(f"    999 이상값 개수: {outliers_999}개")
+        
+        if outliers_999 > 0:
+            # 999 이상값을 결측치로 처리
+            df.loc[df['dti'] >= 999, 'dti'] = np.nan
+            
+            # 결측치를 중앙값으로 대체
+            median_dti = df['dti'].median()
+            df['dti'].fillna(median_dti, inplace=True)
+            
+            print(f"    ✓ 999 이상값을 중앙값({median_dti:.2f})으로 대체")
+            
+            # 처리 후 통계
+            processed_dti_stats = df['dti'].describe()
+            print(f"  처리 후 dti 통계:")
+            print(f"    평균: {processed_dti_stats['mean']:.2f}")
+            print(f"    표준편차: {processed_dti_stats['std']:.2f}")
+            print(f"    최대값: {processed_dti_stats['max']:.2f}")
+            
+            outlier_results['dti'] = {
+                'outliers_removed': outliers_999,
+                'replacement_value': median_dti,
+                'original_max': original_dti_stats['max'],
+                'processed_max': processed_dti_stats['max']
+            }
+    
+    # 2. revol_util 100% 초과값 클리핑
+    print("\n2. revol_util 100% 초과값 클리핑")
+    print("-" * 30)
+    
+    if 'revol_util' in df.columns:
+        original_revol_stats = df['revol_util'].describe()
+        print(f"  처리 전 revol_util 통계:")
+        print(f"    평균: {original_revol_stats['mean']:.2f}")
+        print(f"    최대값: {original_revol_stats['max']:.2f}")
+        
+        # 100% 초과값 개수 확인
+        outliers_100 = (df['revol_util'] > 100).sum()
+        print(f"    100% 초과값 개수: {outliers_100}개")
+        
+        if outliers_100 > 0:
+            # 100% 초과값을 100%로 클리핑
+            df.loc[df['revol_util'] > 100, 'revol_util'] = 100
+            
+            print(f"    ✓ 100% 초과값을 100%로 클리핑")
+            
+            # 처리 후 통계
+            processed_revol_stats = df['revol_util'].describe()
+            print(f"  처리 후 revol_util 통계:")
+            print(f"    평균: {processed_revol_stats['mean']:.2f}")
+            print(f"    최대값: {processed_revol_stats['max']:.2f}")
+            
+            outlier_results['revol_util'] = {
+                'outliers_clipped': outliers_100,
+                'clip_value': 100,
+                'original_max': original_revol_stats['max'],
+                'processed_max': processed_revol_stats['max']
+            }
+    
+    # 3. annual_inc IQR 기반 이상값 처리
+    print("\n3. annual_inc IQR 기반 이상값 처리")
+    print("-" * 30)
+    
+    if 'annual_inc' in df.columns:
+        original_inc_stats = df['annual_inc'].describe()
+        print(f"  처리 전 annual_inc 통계:")
+        print(f"    평균: {original_inc_stats['mean']:.2f}")
+        print(f"    표준편차: {original_inc_stats['std']:.2f}")
+        print(f"    최대값: {original_inc_stats['max']:.2f}")
+        
+        # IQR 계산
+        Q1 = df['annual_inc'].quantile(0.25)
+        Q3 = df['annual_inc'].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        print(f"    IQR: {IQR:.2f}")
+        print(f"    하한: {lower_bound:.2f}")
+        print(f"    상한: {upper_bound:.2f}")
+        
+        # 이상값 개수 확인
+        outliers_iqr = ((df['annual_inc'] < lower_bound) | (df['annual_inc'] > upper_bound)).sum()
+        print(f"    IQR 기반 이상값 개수: {outliers_iqr}개")
+        
+        if outliers_iqr > 0:
+            # 이상값을 상한값으로 클리핑
+            df.loc[df['annual_inc'] > upper_bound, 'annual_inc'] = upper_bound
+            df.loc[df['annual_inc'] < lower_bound, 'annual_inc'] = lower_bound
+            
+            print(f"    ✓ 이상값을 IQR 범위로 클리핑")
+            
+            # 처리 후 통계
+            processed_inc_stats = df['annual_inc'].describe()
+            print(f"  처리 후 annual_inc 통계:")
+            print(f"    평균: {processed_inc_stats['mean']:.2f}")
+            print(f"    표준편차: {processed_inc_stats['std']:.2f}")
+            print(f"    최대값: {processed_inc_stats['max']:.2f}")
+            
+            outlier_results['annual_inc'] = {
+                'outliers_clipped': outliers_iqr,
+                'lower_bound': lower_bound,
+                'upper_bound': upper_bound,
+                'original_max': original_inc_stats['max'],
+                'processed_max': processed_inc_stats['max']
+            }
+    
+    # 4. 이상값 처리 결과 요약
+    print("\n4. 이상값 처리 결과 요약")
+    print("-" * 30)
+    
+    total_outliers_processed = sum([
+        result.get('outliers_removed', 0) + result.get('outliers_clipped', 0)
+        for result in outlier_results.values()
+    ])
+    
+    print(f"  총 처리된 이상값: {total_outliers_processed}개")
+    print(f"  처리된 변수: {list(outlier_results.keys())}")
+    
+    for var, result in outlier_results.items():
+        if 'outliers_removed' in result:
+            print(f"    {var}: {result['outliers_removed']}개 제거 → {result['replacement_value']:.2f}로 대체")
+        if 'outliers_clipped' in result:
+            print(f"    {var}: {result['outliers_clipped']}개 클리핑")
+    
+    print(f"\n[이상값 처리 완료]")
+    print("=" * 50)
+    
+    return df, outlier_results
+
+def create_outlier_comparison_plots(df_original, df_processed, outlier_results):
+    """
+    이상값 처리 전후 비교 시각화 함수
+    
+    Parameters:
+    -----------
+    df_original : pandas.DataFrame
+        원본 데이터프레임
+    df_processed : pandas.DataFrame
+        처리된 데이터프레임
+    outlier_results : dict
+        이상값 처리 결과
+    """
+    print("\n[이상값 처리 전후 비교 시각화]")
+    print("-" * 40)
+    
+    import matplotlib.pyplot as plt
+    
+    # 처리된 변수들에 대해 시각화
+    for var in outlier_results.keys():
+        if var in df_original.columns and var in df_processed.columns:
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+            
+            # 처리 전 분포
+            ax1.hist(df_original[var].dropna(), bins=50, alpha=0.7, color='red', label='처리 전')
+            ax1.set_title(f'{var} - 처리 전 분포')
+            ax1.set_xlabel(var)
+            ax1.set_ylabel('빈도')
+            ax1.legend()
+            
+            # 처리 후 분포
+            ax2.hist(df_processed[var].dropna(), bins=50, alpha=0.7, color='blue', label='처리 후')
+            ax2.set_title(f'{var} - 처리 후 분포')
+            ax2.set_xlabel(var)
+            ax2.set_ylabel('빈도')
+            ax2.legend()
+            
+            plt.tight_layout()
+            
+            # 저장
+            plot_path = get_reports_file_path(f"{var}_outlier_comparison.png")
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"  ✓ {var} 비교 시각화 저장: {plot_path}")
 
 def clean_percentage_columns(df, percentage_cols=None):
     """
@@ -151,6 +361,10 @@ try:
     
     df = pd.read_csv(ENCODED_DATA_PATH)
     print(f"✓ 데이터 로드 완료: {ENCODED_DATA_PATH}")
+    
+    # 원본 데이터 백업 (이상값 처리 전후 비교용)
+    df_original = df.copy()
+    
 except Exception as e:
     print(f"✗ 데이터 로드 실패: {e}")
     exit(1)
@@ -172,6 +386,48 @@ print("\n[개선된 문자열 데이터 정리 시작]")
 
 # 3.1 퍼센트 컬럼 정리
 df, conversion_results = clean_percentage_columns(df)
+
+# 3.2 이상값 처리 (새로 추가)
+print("\n[이상값 처리 시작]")
+df, outlier_results = handle_outliers(df)
+
+# 3.3 이상값 처리 전후 비교 시각화
+if outlier_results:
+    create_outlier_comparison_plots(df_original, df, outlier_results)
+    
+    # 이상값 처리 결과 리포트 생성
+    report_path = get_reports_file_path("outlier_handling_report.txt")
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write("이상값 처리 결과 리포트\n")
+        f.write("=" * 40 + "\n\n")
+        
+        total_processed = sum([
+            result.get('outliers_removed', 0) + result.get('outliers_clipped', 0)
+            for result in outlier_results.values()
+        ])
+        
+        f.write(f"총 처리된 이상값: {total_processed}개\n")
+        f.write(f"처리된 변수: {list(outlier_results.keys())}\n\n")
+        
+        for var, result in outlier_results.items():
+            f.write(f"{var} 처리 결과:\n")
+            if 'outliers_removed' in result:
+                f.write(f"  - 제거된 이상값: {result['outliers_removed']}개\n")
+                f.write(f"  - 대체값: {result['replacement_value']:.2f}\n")
+                f.write(f"  - 원본 최대값: {result['original_max']:.2f}\n")
+                f.write(f"  - 처리 후 최대값: {result['processed_max']:.2f}\n")
+            if 'outliers_clipped' in result:
+                f.write(f"  - 클리핑된 이상값: {result['outliers_clipped']}개\n")
+                if 'clip_value' in result:
+                    f.write(f"  - 클리핑 값: {result['clip_value']}\n")
+                if 'lower_bound' in result and 'upper_bound' in result:
+                    f.write(f"  - IQR 하한: {result['lower_bound']:.2f}\n")
+                    f.write(f"  - IQR 상한: {result['upper_bound']:.2f}\n")
+                f.write(f"  - 원본 최대값: {result['original_max']:.2f}\n")
+                f.write(f"  - 처리 후 최대값: {result['processed_max']:.2f}\n")
+            f.write("\n")
+    
+    print(f"✓ 이상값 처리 결과 리포트 저장: {report_path}")
 
 # 3.2 체계적인 결측치 처리
 print("\n[결측치 처리 시작]")
