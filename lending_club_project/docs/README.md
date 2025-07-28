@@ -1,95 +1,165 @@
-# Documentation 폴더
+# Lending Club 신용평가 모델링 프로젝트
 
-이 폴더는 프로젝트의 모든 문서화 자료를 체계적으로 정리한 곳입니다.
+## 📋 프로젝트 개요
 
-## 📁 폴더 구조
+Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다. 개인의 부도 여부를 예측하여 Sharpe Ratio를 극대화하는 것이 목표입니다.
+
+## 🎯 주요 목표
+
+- **예측 대상**: 개인의 부도 여부 (이진분류)
+- **목적함수**: Sharpe Ratio 극대화
+- **평가 방식**: 위험 대비 초과수익률
+
+## 📊 현재 진행 상황
+
+### ✅ 완료된 작업
+
+#### **Phase 1: 데이터 이해 및 전처리 (100% 완료)**
+
+- ✅ **Milestone 1.1**: 데이터 탐색 (175만건, 141개 변수 분석)
+- ✅ **Milestone 1.2**: 종속변수 정의 (부도율 13.05%, 클래스 불균형 처리)
+- ✅ **Milestone 1.3**: 특성 엔지니어링 (141개 → 30개 특성, 87% 차원 축소)
+- ✅ **Milestone 1.4**: 데이터 누출 문제 해결 (후행지표 완전 제거)
+
+#### **Phase 2: 모델 개발 (부분 완료)**
+
+- ✅ **Milestone 2.1**: 기본 모델 구현 (4개 모델: 로지스틱, 랜덤포레스트, XGBoost, LightGBM)
+- ⏳ **Milestone 2.2**: 모델 평가 프레임워크 구축 (진행 중)
+- ⏳ **Milestone 2.3**: 하이퍼파라미터 튜닝 (대기 중)
+
+### 🔥 최근 주요 성과
+
+1. **데이터 누출 문제 해결**
+
+   - 후행지표 변수 35개 완전 제거
+   - 승인 시점 변수 80개로 구성된 깨끗한 데이터셋 생성
+   - 실제 운영 가능한 모델 구축
+
+2. **완전한 모델링 파이프라인 구축**
+
+   - 전처리부터 평가까지 완전한 파이프라인
+   - 랜덤포레스트 ROC-AUC 0.6709 달성
+   - 확장 가능한 아키텍처 구축
+
+3. **체계적인 문서화**
+   - 모든 과정에 대한 상세한 문서화 완료
+   - 재현 가능한 코드 구조
+
+## 🚀 다음 단계
+
+### 즉시 진행할 작업
+
+1. **모델 평가 프레임워크 구축 (Milestone 2.2)**
+
+   - Train/Validation/Test Split 함수 구현
+   - Cross Validation 함수 구현
+   - Sharpe Ratio 기반 평가 지표 구현
+
+2. **하이퍼파라미터 튜닝 (Milestone 2.3)**
+   - Grid Search / Random Search 구현
+   - Bayesian Optimization 적용
+   - 각 모델별 최적 파라미터 도출
+
+### 중장기 계획
+
+1. **금융 모델링 시스템 구축**
+2. **반복 검증 시스템 구현**
+3. **최종 모델 최적화**
+
+## 📁 프로젝트 구조
 
 ```
-docs/
-├── 📋 project_docs/          # 프로젝트 진행 문서
-│   ├── lending_club_credit_modeling_project.md  # 전체 프로젝트 계획
-│   ├── completed_milestones.md                  # 완료된 Milestone
-│   └── data_summary_report.txt                 # 데이터 요약 보고서
-│
-├── 🛠️ tools/                 # 프로젝트 도구
-│   ├── convert_notebooks.py  # Jupyter Notebook 관리 도구
-│   └── README.md            # 도구 사용법
-│
-└── 📊 variables/             # 변수 정의 및 설명
-    ├── lending_club_variables.js    # 원본 변수 정의 (영문)
-    └── lending_club_variables_ko.txt # 변수 한글 설명
+lending_club_project/
+├── config/                    # 설정 파일
+│   ├── file_paths.py         # 파일 경로 관리
+│   └── settings.py           # 프로젝트 설정
+├── data_analysis/            # 데이터 분석
+│   ├── data_exploration.py   # 데이터 탐색
+│   └── target_variable_definition.py  # 타겟 변수 정의
+├── feature_engineering/      # 특성 엔지니어링
+│   ├── feature_engineering_step1_encoding.py    # 범주형 인코딩
+│   ├── feature_engineering_step2_scaling.py     # 수치형 스케일링
+│   ├── feature_engineering_step3_new_features.py # 새로운 특성 생성
+│   ├── check_modeling_variables.py              # 모델링 변수 검증
+│   ├── create_clean_modeling_dataset.py         # 깨끗한 데이터셋 생성
+│   └── statistical_validation_system.py         # 통계적 검증 시스템
+├── modeling/                 # 모델링
+│   ├── basic_models.py       # 기본 모델 구현
+│   └── credit_risk_modeling_pipeline.py  # 완전한 모델링 파이프라인
+├── reports/                  # 보고서 및 결과
+│   ├── feature_selection_analysis_report.txt    # 특성 선택 분석
+│   ├── feature_selection_strategy_report.txt    # 특성 선택 전략
+│   ├── modeling_variables_analysis_report.txt   # 변수 분석
+│   ├── clean_modeling_dataset_report.txt        # 깨끗한 데이터셋 보고서
+│   └── basic_models_performance_report.txt      # 모델 성능 비교
+└── docs/                     # 문서
+    ├── project_docs/         # 프로젝트 문서
+    ├── preprocessing_improvement_todos.md       # 전처리 개선사항
+    └── feature_classification_strategy.md       # 특성 분류 전략
 ```
 
-## 🎯 각 폴더의 역할
+## 🔧 주요 기술 스택
 
-### 📋 `project_docs/` - 프로젝트 진행 문서
+### Python 라이브러리
 
-프로젝트의 진행 상황과 분석 결과를 담은 문서들
+- **데이터 처리**: pandas, numpy
+- **머신러닝**: scikit-learn, xgboost, lightgbm
+- **시각화**: matplotlib, seaborn
+- **금융 계산**: numpy-financial
+- **모니터링**: psutil
 
-- **전체 프로젝트 계획**: 목표, 방법론, 일정
-- **완료된 작업**: Milestone별 상세 내용
-- **분석 결과**: 데이터 요약 및 주요 발견사항
+### 핵심 기능
 
-### 🛠️ `tools/` - 프로젝트 도구
+- **데이터 전처리**: 체계적인 결측치 처리, 이상값 처리, 특성 엔지니어링
+- **모델링**: 다양한 알고리즘 비교 및 앙상블 기법
+- **평가**: ROC-AUC, 분류 리포트, 혼동 행렬
+- **검증**: 통계적 검증 시스템, 데이터 품질 모니터링
 
-프로젝트 진행에 필요한 유틸리티 도구들
+## 📈 주요 성과 지표
 
-- **Notebook 관리**: .ipynb 파일 변환 및 정리
-- **문서화 도구**: 프로젝트 표준화 도구
+### 데이터 품질
 
-### 📊 `variables/` - 변수 정의 및 설명
+- **원본 데이터**: 175만건, 141개 변수
+- **전처리 후**: 175만건, 81개 변수 (후행지표 제거)
+- **특성 선택**: 30개 핵심 특성 (87% 차원 축소)
 
-데이터셋의 변수들에 대한 상세한 정의와 설명
+### 모델 성능
 
-- **원본 정의**: JavaScript 형태의 영문 변수 정의
-- **한글 설명**: 카테고리별 변수 한글 설명
+- **최고 성능**: 랜덤포레스트 ROC-AUC 0.6709
+- **모델 다양성**: 4가지 서로 다른 접근법
+- **확장성**: 하이퍼파라미터 튜닝 및 앙상블 모델 구축 준비
 
-## 📋 사용법
+### 프로세스 개선
 
-### 프로젝트 진행 상황 확인
+- **데이터 누출 방지**: 후행지표 완전 제거
+- **실제 운영 가능**: 승인 시점 변수만 사용
+- **문서화 완성**: 모든 과정에 대한 상세한 문서화
 
-```bash
-# 전체 프로젝트 계획 확인
-cat docs/project_docs/lending_club_credit_modeling_project.md
+## ⚠️ 주의사항
 
-# 완료된 작업 확인
-cat docs/project_docs/completed_milestones.md
+### 데이터 누출 방지
 
-# 데이터 요약 확인
-cat docs/project_docs/data_summary_report.txt
-```
+- **후행지표 변수 절대 사용 금지**: recoveries, collection_recovery_fee 등
+- **승인 시점 변수만 사용**: 대출 승인 시점에 알 수 있는 정보만 활용
+- **지속적인 검증**: 데이터 품질 모니터링 시스템 구축
 
-### 변수 정의 참조
+### 모델링 전략
 
-```bash
-# 영문 변수 정의
-cat docs/variables/lending_club_variables.js
+- **단계적 접근**: 1차(필수) → 2차(확장) → 3차(전체) → 앙상블
+- **금융적 관점**: 단순 분류 성능이 아닌 Sharpe Ratio 최적화
+- **안정성 확보**: 반복적인 검증을 통한 모델 안정성 확보
 
-# 한글 변수 설명
-cat docs/variables/lending_club_variables_ko.txt
-```
+## 📞 연락처
 
-### 도구 사용
+- **프로젝트 매니저**: [담당자명]
+- **기술 리드**: [담당자명]
+- **데이터 분석팀**: [담당자명]
 
-```bash
-# Notebook 변환 도구
-python docs/tools/convert_notebooks.py
-```
+## 📝 라이선스
 
-## 🔍 주요 특징
+이 프로젝트는 SNU Big Data Fintech 2025 과정의 일부입니다.
 
-### 체계적 분류
+---
 
-- **프로젝트 문서**: 진행 상황과 결과
-- **도구**: 재사용 가능한 유틸리티
-- **변수 정의**: 데이터 이해를 위한 참조 자료
-
-### 중복 제거
-
-- 기존 `docs/`와 `documentation/` 폴더의 중복 제거
-- 명확한 역할 분담으로 효율성 향상
-
-### 확장성
-
-- 새로운 문서나 도구 추가 시 적절한 폴더에 배치
-- 일관된 구조 유지
+**마지막 업데이트**: 2025년 현재  
+**문서 버전**: 1.1
