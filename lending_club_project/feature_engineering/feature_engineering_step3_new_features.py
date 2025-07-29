@@ -235,9 +235,299 @@ def safe_numeric_conversion(series, default_value=0):
     except:
         return pd.Series([default_value] * len(series))
 
+def create_time_based_features(df):
+    """
+    날짜 데이터를 체계적으로 처리하고 시간 기반 특성을 생성하는 함수 (Phase 3.2)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        원본 데이터프레임
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        시간 기반 특성이 추가된 데이터프레임
+    """
+    print("\n[시간 기반 특성 생성 시작 - Phase 3.2]")
+    print("-" * 50)
+    
+    # 날짜 관련 컬럼 확인
+    date_columns = ['issue_d', 'earliest_cr_line', 'last_pymnt_d', 'next_pymnt_d', 'last_credit_pull_d']
+    available_date_cols = [col for col in date_columns if col in df.columns]
+    print(f"사용 가능한 날짜 컬럼: {available_date_cols}")
+    
+    if len(available_date_cols) < 2:
+        print("⚠️ 경고: 날짜 컬럼이 부족하여 기본 시간 특성만 생성합니다.")
+        return df
+    
+    try:
+        # 1. 대출 발행 시점 정보 추출
+        print("\n1. 대출 발행 시점 정보 추출")
+        print("-" * 30)
+        
+        if 'issue_d' in df.columns:
+            # 날짜 파싱 (예: 'Jun-2018' → datetime)
+            df['issue_date'] = pd.to_datetime(df['issue_d'], format='%b-%Y', errors='coerce')
+            
+            # 연도, 월, 분기 추출
+            df['issue_year'] = df['issue_date'].dt.year
+            df['issue_month'] = df['issue_date'].dt.month
+            df['issue_quarter'] = df['issue_date'].dt.quarter
+            
+            # 계절성 특성
+            df['issue_season'] = df['issue_month'].map({
+                12: 'Winter', 1: 'Winter', 2: 'Winter',
+                3: 'Spring', 4: 'Spring', 5: 'Spring',
+                6: 'Summer', 7: 'Summer', 8: 'Summer',
+                9: 'Fall', 10: 'Fall', 11: 'Fall'
+            })
+            
+            # 월말/월초 특성
+            df['is_month_end'] = df['issue_date'].dt.is_month_end.astype(int)
+            df['is_month_start'] = df['issue_date'].dt.is_month_start.astype(int)
+            
+            # 분기말/분기초 특성
+            df['is_quarter_end'] = df['issue_date'].dt.is_quarter_end.astype(int)
+            df['is_quarter_start'] = df['issue_date'].dt.is_quarter_start.astype(int)
+            
+            print(f"✓ 대출 발행 시점 특성 생성 완료")
+            print(f"  연도 범위: {df['issue_year'].min()} ~ {df['issue_year'].max()}")
+            print(f"  월별 분포: {df['issue_month'].value_counts().sort_index().to_dict()}")
+        
+        # 2. 신용 이력 기간 계산 (개선된 로직)
+        print("\n2. 신용 이력 기간 계산")
+        print("-" * 30)
+        
+        if 'earliest_cr_line' in df.columns and 'issue_d' in df.columns:
+            # 최초 신용 라인 날짜 파싱
+            df['earliest_cr_date'] = pd.to_datetime(df['earliest_cr_line'], format='%b-%Y', errors='coerce')
+            
+            # 신용 이력 기간 계산 (개월 단위)
+            df['credit_history_months'] = ((df['issue_date'] - df['earliest_cr_date']).dt.days / 30.44).fillna(0)
+            
+            # 신용 이력 기간 구간화
+            df['credit_history_category'] = pd.cut(
+                df['credit_history_months'],
+                bins=[0, 12, 36, 60, 120, float('inf')],
+                labels=['New', 'Young', 'Established', 'Mature', 'Veteran'],
+                include_lowest=True
+            )
+            
+            # 신용 이력 연수
+            df['credit_history_years'] = df['credit_history_months'] / 12
+            
+            print(f"✓ 신용 이력 기간 계산 완료")
+            print(f"  평균 신용 이력: {df['credit_history_months'].mean():.1f}개월")
+            print(f"  신용 이력 분포: {df['credit_history_category'].value_counts().to_dict()}")
+        
+        # 3. 최근 활동 시간 계산
+        print("\n3. 최근 활동 시간 계산")
+        print("-" * 30)
+        
+        if 'last_credit_pull_d' in df.columns and 'issue_d' in df.columns:
+            # 최근 신용 조회 날짜 파싱
+            df['last_credit_pull_date'] = pd.to_datetime(df['last_credit_pull_d'], format='%b-%Y', errors='coerce')
+            
+            # 대출 발행과 최근 신용 조회 간의 시간 차이
+            df['months_since_credit_pull'] = ((df['issue_date'] - df['last_credit_pull_date']).dt.days / 30.44).fillna(0)
+            
+            # 신용 조회 최신성 점수 (NaN 처리 개선)
+            try:
+                df['credit_pull_recency_score'] = pd.cut(
+                    df['months_since_credit_pull'],
+                    bins=[0, 1, 3, 6, 12, float('inf')],
+                    labels=[5, 4, 3, 2, 1],
+                    include_lowest=True
+                ).astype('Int64')  # Int64는 NaN을 허용
+            except:
+                # 대안: 직접 조건부 할당
+                df['credit_pull_recency_score'] = np.where(
+                    df['months_since_credit_pull'] <= 1, 5,
+                    np.where(df['months_since_credit_pull'] <= 3, 4,
+                    np.where(df['months_since_credit_pull'] <= 6, 3,
+                    np.where(df['months_since_credit_pull'] <= 12, 2, 1))))
+            
+            print(f"✓ 최근 활동 시간 계산 완료")
+            print(f"  평균 신용 조회 경과: {df['months_since_credit_pull'].mean():.1f}개월")
+        
+        # 4. 계절성 및 경제 사이클 특성 생성
+        print("\n4. 계절성 및 경제 사이클 특성 생성")
+        print("-" * 30)
+        
+        if 'issue_date' in df.columns:
+            # 월별 대출 빈도
+            monthly_counts = df['issue_month'].value_counts().sort_index()
+            df['monthly_loan_frequency'] = df['issue_month'].map(monthly_counts)
+            
+            # 분기별 대출 빈도
+            quarterly_counts = df['issue_quarter'].value_counts().sort_index()
+            df['quarterly_loan_frequency'] = df['issue_quarter'].map(quarterly_counts)
+            
+            # 계절별 대출 빈도
+            seasonal_counts = df['issue_season'].value_counts()
+            df['seasonal_loan_frequency'] = df['issue_season'].map(seasonal_counts)
+            
+            # 경제 사이클 지표 (연도별 추세)
+            yearly_counts = df['issue_year'].value_counts().sort_index()
+            df['yearly_loan_trend'] = df['issue_year'].map(yearly_counts)
+            
+            print(f"✓ 계절성 특성 생성 완료")
+            print(f"  월별 대출 빈도: {monthly_counts.to_dict()}")
+            print(f"  계절별 대출 빈도: {seasonal_counts.to_dict()}")
+        
+        # 5. 시간 기반 위험 지표
+        print("\n5. 시간 기반 위험 지표 생성")
+        print("-" * 30)
+        
+        # 신용 이력과 대출 위험의 관계
+        if 'credit_history_months' in df.columns:
+            # 신용 이력이 짧을수록 위험 (U자형 관계 고려)
+            df['credit_history_risk'] = np.where(
+                df['credit_history_months'] < 12, 3,  # 신규
+                np.where(df['credit_history_months'] < 36, 2,  # 젊은
+                np.where(df['credit_history_months'] < 120, 1,  # 성숙
+                0))  # 베테랑
+            )
+            
+            # 신용 이력 안정성 점수
+            df['credit_stability_score'] = np.where(
+                df['credit_history_months'] >= 60, 5,  # 매우 안정
+                np.where(df['credit_history_months'] >= 36, 4,  # 안정
+                np.where(df['credit_history_months'] >= 24, 3,  # 보통
+                np.where(df['credit_history_months'] >= 12, 2,  # 불안정
+                1)))  # 매우 불안정
+            )
+        
+        # 6. 시간 기반 특성 검증
+        print("\n6. 시간 기반 특성 검증")
+        print("-" * 30)
+        
+        # 생성된 시간 특성들 확인
+        time_features = [col for col in df.columns if any(x in col for x in [
+            'issue_', 'credit_history_', 'months_since_', 'credit_pull_',
+            'monthly_', 'quarterly_', 'seasonal_', 'yearly_', 'credit_stability_'
+        ])]
+        
+        print(f"생성된 시간 기반 특성: {len(time_features)}개")
+        for feature in time_features:
+            if df[feature].dtype in ['int64', 'float64']:
+                print(f"  {feature}: {df[feature].mean():.2f} (평균)")
+            else:
+                print(f"  {feature}: {df[feature].nunique()}개 고유값")
+        
+        print(f"\n✓ 시간 기반 특성 생성 완료 (총 {len(time_features)}개)")
+        
+        return df
+        
+    except Exception as e:
+        print(f"❌ 시간 기반 특성 생성 중 오류 발생: {e}")
+        return df
+
+def enhance_time_based_features(df):
+    """
+    기존 시간 기반 특성을 강화하는 함수 (Phase 5.2)
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        원본 데이터프레임
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        강화된 시간 기반 특성이 추가된 데이터프레임
+    """
+    print("\n[시간 기반 특성 강화 - Phase 5.2]")
+    print("-" * 50)
+    
+    try:
+        # 1. 고급 계절성 분석
+        print("\n1. 고급 계절성 분석")
+        print("-" * 30)
+        
+        if 'issue_month' in df.columns:
+            # 월별 부도율 분석
+            monthly_default_rates = df.groupby('issue_month')['target'].mean()
+            df['monthly_default_risk'] = df['issue_month'].map(monthly_default_rates)
+            
+            # 분기별 부도율 분석
+            quarterly_default_rates = df.groupby('issue_quarter')['target'].mean()
+            df['quarterly_default_risk'] = df['issue_quarter'].map(quarterly_default_rates)
+            
+            # 계절별 부도율 분석
+            seasonal_default_rates = df.groupby('issue_season')['target'].mean()
+            df['seasonal_default_risk'] = df['issue_season'].map(seasonal_default_rates)
+            
+            print(f"✓ 고급 계절성 분석 완료")
+        
+        # 2. 경제 사이클 특성
+        print("\n2. 경제 사이클 특성 생성")
+        print("-" * 30)
+        
+        if 'issue_year' in df.columns:
+            # 연도별 부도율 추세
+            yearly_default_rates = df.groupby('issue_year')['target'].mean()
+            df['yearly_default_trend'] = df['issue_year'].map(yearly_default_rates)
+            
+            # 경제 사이클 지표 (연도별 대출 규모 변화)
+            yearly_loan_amounts = df.groupby('issue_year')['loan_amnt'].mean()
+            df['economic_cycle_indicator'] = df['issue_year'].map(yearly_loan_amounts)
+            
+            print(f"✓ 경제 사이클 특성 생성 완료")
+        
+        # 3. 시간 기반 복합 지표
+        print("\n3. 시간 기반 복합 지표 생성")
+        print("-" * 30)
+        
+        # 시간 기반 종합 위험 점수
+        time_risk_factors = []
+        if 'credit_history_risk' in df.columns:
+            time_risk_factors.append(df['credit_history_risk'])
+        if 'monthly_default_risk' in df.columns:
+            time_risk_factors.append(df['monthly_default_risk'] * 10)  # 스케일 조정
+        if 'credit_pull_recency_score' in df.columns:
+            time_risk_factors.append(6 - df['credit_pull_recency_score'])  # 역순
+        
+        if time_risk_factors:
+            df['time_based_risk_score'] = np.mean(time_risk_factors, axis=0)
+            print(f"✓ 시간 기반 복합 지표 생성 완료")
+        
+        # 4. 시간 기반 특성 중요도 분석
+        print("\n4. 시간 기반 특성 중요도 분석")
+        print("-" * 30)
+        
+        time_features = [col for col in df.columns if any(x in col for x in [
+            'issue_', 'credit_history_', 'monthly_', 'quarterly_', 'seasonal_',
+            'yearly_', 'credit_pull_', 'time_based_'
+        ])]
+        
+        if 'target' in df.columns and time_features:
+            # 시간 특성과 타겟 간의 상관관계 분석
+            correlations = []
+            for feature in time_features:
+                if df[feature].dtype in ['int64', 'float64']:
+                    corr = df[feature].corr(df['target'])
+                    correlations.append((feature, corr))
+            
+            # 상관관계 순으로 정렬
+            correlations.sort(key=lambda x: abs(x[1]), reverse=True)
+            
+            print(f"시간 특성 중요도 (상관관계 기준):")
+            for i, (feature, corr) in enumerate(correlations[:10], 1):
+                print(f"  {i:2d}. {feature}: {corr:.4f}")
+        
+        print(f"\n✓ 시간 기반 특성 강화 완료")
+        
+        return df
+        
+    except Exception as e:
+        print(f"❌ 시간 기반 특성 강화 중 오류 발생: {e}")
+        return df
+
 def create_new_features(df):
     """
-    새로운 특성들을 생성하는 함수
+    새로운 특성들을 생성하는 함수 (Phase 3.2 포함)
     
     Args:
         df: 원본 데이터프레임
@@ -330,9 +620,13 @@ def create_new_features(df):
     open_rv_12m = safe_numeric_conversion(df['open_rv_12m'])
     df['recent_account_activity'] = open_acc_6m + open_il_12m + open_rv_12m
     
-    # 6. 시간 관련 특성
-    print("⏰ 6. 시간 관련 특성 생성 중...")
+    # 6. 시간 관련 특성 (Phase 3.2 추가)
+    print("⏰ 6. 시간 관련 특성 생성 중... (Phase 3.2)")
     
+    # Phase 3.2: 체계적인 시간 기반 특성 생성
+    df = create_time_based_features(df)
+    
+    # 기존 시간 관련 특성 (호환성 유지)
     # 신용 이력 길이 (개월) - 안전한 변환
     try:
         df['credit_history_length'] = (pd.to_datetime(df['last_credit_pull_d'], format='%b-%Y', errors='coerce') - 
@@ -437,8 +731,11 @@ def create_new_features(df):
     inq_last_12m = safe_numeric_conversion(df['inq_last_12m'])
     df['inquiry_pattern'] = inq_last_6mths / (inq_last_12m + 1)
     
-    # 계좌 개설 패턴
-    df['account_opening_pattern'] = open_acc_6m / (total_acc + 1)
+    # 신용 조회 빈도 점수
+    df['inquiry_frequency_score'] = np.where(inq_last_6mths == 0, 5,
+                                           np.where(inq_last_6mths <= 2, 4,
+                                                   np.where(inq_last_6mths <= 5, 3,
+                                                           np.where(inq_last_6mths <= 10, 2, 1))))
     
     # 12. 상호작용 특성
     print("🔄 12. 상호작용 특성 생성 중...")
@@ -452,8 +749,80 @@ def create_new_features(df):
     # 대출 금액 × 이자율 상호작용
     df['loan_int_interaction'] = loan_amnt * int_rate / 1000
     
-    print("✅ 새로운 특성 생성 완료!")
-    print(f"📊 총 {len(df.columns)}개 변수 (원본: 141개)")
+    # 13. 시간 기반 특성 강화 (Phase 5.2 미리 적용)
+    print("⏰ 13. 시간 기반 특성 강화 중... (Phase 5.2)")
+    
+    # 타겟 변수가 있는 경우에만 강화 특성 생성
+    if 'target' in df.columns:
+        df = enhance_time_based_features(df)
+    
+    # 14. 최종 특성 검증 및 요약
+    print("📊 14. 최종 특성 검증 및 요약")
+    print("-" * 50)
+    
+    # 생성된 새로운 특성들 확인
+    original_cols = set(['id', 'loan_amnt', 'funded_amnt', 'term', 'int_rate', 'installment', 
+                        'grade', 'sub_grade', 'emp_title', 'emp_length', 'home_ownership', 
+                        'annual_inc', 'verification_status', 'issue_d', 'loan_status', 'purpose', 
+                        'title', 'addr_state', 'dti', 'delinq_2yrs', 'earliest_cr_line', 
+                        'fico_range_low', 'fico_range_high', 'inq_last_6mths', 'mths_since_last_delinq', 
+                        'mths_since_last_record', 'open_acc', 'pub_rec', 'revol_bal', 'revol_util', 
+                        'total_acc', 'initial_list_status', 'out_prncp', 'out_prncp_inv', 'total_pymnt', 
+                        'total_pymnt_inv', 'total_rec_prncp', 'total_rec_int', 'total_rec_late_fee', 
+                        'recoveries', 'collection_recovery_fee', 'last_pymnt_d', 'last_pymnt_amnt', 
+                        'next_pymnt_d', 'last_credit_pull_d', 'last_fico_range_high', 'last_fico_range_low', 
+                        'collections_12_mths_ex_med', 'mths_since_last_major_derog', 'policy_code', 
+                        'application_type', 'annual_inc_joint', 'dti_joint', 'verification_status_joint', 
+                        'acc_now_delinq', 'tot_coll_amt', 'tot_cur_bal', 'open_acc_6m', 'open_act_il', 
+                        'open_il_12m', 'open_il_24m', 'mths_since_rcnt_il', 'total_bal_il', 'il_util', 
+                        'open_rv_12m', 'open_rv_24m', 'max_bal_bc', 'all_util', 'total_rev_hi_lim', 
+                        'inq_fi', 'total_cu_tl', 'inq_last_12m', 'acc_open_past_24mths', 'avg_cur_bal', 
+                        'bc_open_to_buy', 'bc_util', 'chargeoff_within_12_mths', 'delinq_amnt', 
+                        'mo_sin_old_il_acct', 'mo_sin_old_rev_tl_op', 'mo_sin_rcnt_rev_tl_op', 
+                        'mo_sin_rcnt_tl', 'mort_acc', 'mths_since_recent_bc', 'mths_since_recent_bc_dlq', 
+                        'mths_since_recent_inq', 'mths_since_recent_revol_delinq', 'num_accts_ever_120_pd', 
+                        'num_actv_bc_tl', 'num_actv_rev_tl', 'num_bc_sats', 'num_bc_tl', 'num_il_tl', 
+                        'num_op_rev_tl', 'num_rev_accts', 'num_rev_tl_bal_gt_0', 'num_sats', 
+                        'num_tl_120dpd_2m', 'num_tl_30dpd', 'num_tl_90g_dpd_24m', 'num_tl_op_past_12m', 
+                        'pct_tl_nvr_dlq', 'percent_bc_gt_75', 'pub_rec_bankruptcies', 'tax_liens', 
+                        'tot_hi_cred_lim', 'total_bal_ex_mort', 'total_bc_limit', 'total_il_high_credit_limit', 
+                        'revol_bal_joint', 'sec_app_fico_range_low', 'sec_app_fico_range_high', 
+                        'sec_app_earliest_cr_line', 'sec_app_inq_last_6mths', 'sec_app_mort_acc', 
+                        'sec_app_open_acc', 'sec_app_revol_util', 'sec_app_open_act_il', 'sec_app_num_rev_accts', 
+                        'sec_app_chargeoff_within_12_mths', 'sec_app_collections_12_mths_ex_med', 'hardship_flag', 
+                        'hardship_type', 'hardship_reason', 'hardship_status', 'deferral_term', 'hardship_amount', 
+                        'hardship_start_date', 'hardship_end_date', 'payment_plan_start_date', 'hardship_length', 
+                        'hardship_dpd', 'hardship_loan_status', 'orig_projected_additional_accrued_interest', 
+                        'hardship_payoff_balance_amount', 'hardship_last_payment_amount', 'debt_settlement_flag'])
+    
+    new_features = [col for col in df.columns if col not in original_cols]
+    
+    print(f"생성된 새로운 특성 수: {len(new_features)}개")
+    print(f"전체 특성 수: {len(df.columns)}개")
+    print(f"원본 특성 수: {len(original_cols)}개")
+    
+    # 특성 카테고리별 분류
+    feature_categories = {
+        'FICO 관련': [col for col in new_features if 'fico' in col.lower()],
+        '신용 이용률': [col for col in new_features if 'util' in col.lower() or 'credit' in col.lower()],
+        '소득/부채': [col for col in new_features if 'income' in col.lower() or 'debt' in col.lower() or 'payment' in col.lower()],
+        '연체 이력': [col for col in new_features if 'delinq' in col.lower() or 'delinquency' in col.lower()],
+        '계좌 정보': [col for col in new_features if 'account' in col.lower() or 'acc' in col.lower()],
+        '시간 관련': [col for col in new_features if any(x in col.lower() for x in ['time', 'history', 'month', 'year', 'season', 'quarter'])],
+        '대출 조건': [col for col in new_features if any(x in col.lower() for x in ['term', 'rate', 'grade', 'purpose'])],
+        '지역 관련': [col for col in new_features if 'state' in col.lower()],
+        '복합 지표': [col for col in new_features if any(x in col.lower() for x in ['risk', 'score', 'comprehensive', 'health'])],
+        '행동 패턴': [col for col in new_features if any(x in col.lower() for x in ['inquiry', 'pattern', 'frequency'])]
+    }
+    
+    print(f"\n특성 카테고리별 분류:")
+    for category, features in feature_categories.items():
+        if features:
+            print(f"  {category}: {len(features)}개")
+    
+    print(f"\n✓ 새로운 특성 생성 완료!")
+    print(f"  총 생성된 특성: {len(new_features)}개")
+    print(f"  최종 데이터셋 크기: {df.shape}")
     
     return df
 
@@ -493,7 +862,7 @@ def main():
             'recent_account_activity', 'credit_history_length', 'emp_length_numeric', 
             'term_months', 'int_rate_category', 'grade_numeric', 'state_loan_frequency',
             'purpose_risk', 'comprehensive_risk_score', 'credit_health_score',
-            'inquiry_pattern', 'account_opening_pattern', 'fico_dti_interaction',
+            'inquiry_pattern', 'inquiry_frequency_score', 'fico_dti_interaction',
             'income_util_interaction', 'loan_int_interaction'
         ]
         
