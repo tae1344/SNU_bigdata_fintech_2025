@@ -857,11 +857,279 @@ class IntegratedPreprocessingPipeline:
         print(f"  특성 요약 저장: {feature_summary_path}")
         
         # 데이터 분리 정보 저장
+        original_df = pd.read_csv(self.data_path)
         separation_info = {
-            'original_columns': list(pd.read_csv(self.data_path).columns),
+            'original_columns': list(original_df.columns),
             'preprocessed_columns': list(self.df.columns),
-            'new_columns': [col for col in self.df.columns if col not in pd.read_csv(self.data_path).columns],
-            'removed_columns': [col for col in pd.read_csv(self.data_path).columns if col not in self.df.columns]
+            'new_columns': [col for col in self.df.columns if col not in original_df.columns],
+            'removed_columns': [col for col in original_df.columns if col not in self.df.columns]
+        }
+        
+        # 파생 변수 분류 및 설명
+        derived_variables = {
+            'target_variables': {
+                'description': '타겟 변수 (부도 예측용)',
+                'variables': ['target']
+            },
+            'missing_indicator_variables': {
+                'description': '결측치 표시 변수 (30% 이상 결측치가 있는 변수들)',
+                'variables': [col for col in separation_info['new_columns'] if col.endswith('_is_missing')]
+            },
+            'fico_derived_variables': {
+                'description': 'FICO 점수 관련 파생 변수',
+                'variables': ['fico_avg', 'last_fico_avg', 'fico_change', 'fico_change_rate', 'fico_range']
+            },
+            'categorical_encoded_variables': {
+                'description': '범주형 변수 인코딩 결과',
+                'variables': ['sub_grade_ordinal', 'emp_length_numeric', 'emp_length_is_na']
+            },
+            'state_optimized_variables': {
+                'description': '주(state) 데이터 최적화 결과',
+                'variables': ['addr_state_optimized']
+            },
+            'time_based_variables': {
+                'description': '시간 기반 파생 변수',
+                'variables': ['issue_date', 'issue_year', 'issue_month', 'issue_quarter', 'issue_season', 
+                            'is_recession_year', 'earliest_cr_date', 'credit_history_months', 
+                            'credit_history_years', 'credit_history_category', 'last_pymnt_date', 
+                            'days_since_last_payment']
+            },
+            'composite_variables': {
+                'description': '복합 지표 변수',
+                'variables': ['fico_improvement', 'fico_decline', 'debt_to_income_ratio', 'income_category',
+                            'delinquency_severity', 'credit_utilization_risk', 'account_diversity_ratio',
+                            'account_diversity_score']
+            },
+            'financial_modeling_variables': {
+                'description': '금융 모델링 전용 변수 (Sharpe Ratio 계산용)',
+                'variables': ['loan_to_income_ratio', 'monthly_payment_ratio', 'grade_risk_score', 
+                            'term_months', 'term_risk_score', 'expected_return_rate', 'risk_adjusted_return']
+            }
+        }
+        
+        # 변수별 상세 정보 정의
+        variable_details = {
+            # 타겟 변수
+            'target': {
+                'description': '부도 예측 타겟 변수',
+                'purpose': '모델 학습 및 평가용 타겟',
+                'value_type': 'Binary (0/1)',
+                'values': '0: 정상, 1: 부도',
+                'source': 'loan_status 변환'
+            },
+            
+            # FICO 관련 변수
+            'fico_avg': {
+                'description': 'FICO 점수 평균값',
+                'purpose': '신용도 평가 핵심 지표',
+                'value_type': 'Numeric (300-850)',
+                'values': f"범위: {self.df['fico_avg'].min():.0f}-{self.df['fico_avg'].max():.0f}",
+                'source': 'fico_range_low + fico_range_high / 2'
+            },
+            'fico_change': {
+                'description': 'FICO 점수 변화량',
+                'purpose': '신용도 변화 추적',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['fico_change'].min():.0f}-{self.df['fico_change'].max():.0f}",
+                'source': 'last_fico_avg - fico_avg'
+            },
+            'fico_change_rate': {
+                'description': 'FICO 점수 변화율',
+                'purpose': '신용도 변화 비율',
+                'value_type': 'Numeric (Percentage)',
+                'values': f"범위: {self.df['fico_change_rate'].min():.3f}-{self.df['fico_change_rate'].max():.3f}",
+                'source': 'fico_change / fico_avg'
+            },
+            'fico_range': {
+                'description': 'FICO 점수 구간',
+                'purpose': '신용도 등급 분류',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['fico_range'].unique() if pd.notna(x)])}",
+                'source': 'fico_avg 구간화'
+            },
+            
+            # 범주형 인코딩 변수
+            'sub_grade_ordinal': {
+                'description': '서브 등급 순서형 인코딩',
+                'purpose': '신용 등급 순서 정보',
+                'value_type': 'Numeric (0-34)',
+                'values': f"범위: {self.df['sub_grade_ordinal'].min()}-{self.df['sub_grade_ordinal'].max()}",
+                'source': 'sub_grade 순서형 변환'
+            },
+            'emp_length_numeric': {
+                'description': '근무 기간 수치화',
+                'purpose': '근무 기간 정보',
+                'value_type': 'Numeric (0.5-10)',
+                'values': f"범위: {self.df['emp_length_numeric'].min()}-{self.df['emp_length_numeric'].max()}",
+                'source': 'emp_length 수치화'
+            },
+            'emp_length_is_na': {
+                'description': '근무 기간 결측치 플래그',
+                'purpose': '근무 기간 정보 부재 표시',
+                'value_type': 'Binary (0/1)',
+                'values': '0: 정보 있음, 1: 정보 없음',
+                'source': 'emp_length 결측치 확인'
+            },
+            
+            # 시간 기반 변수
+            'issue_year': {
+                'description': '대출 발행 연도',
+                'purpose': '대출 시점 연도 정보',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['issue_year'].min()}-{self.df['issue_year'].max()}",
+                'source': 'issue_d에서 추출'
+            },
+            'issue_month': {
+                'description': '대출 발행 월',
+                'purpose': '대출 시점 월 정보',
+                'value_type': 'Numeric (1-12)',
+                'values': f"범위: {self.df['issue_month'].min()}-{self.df['issue_month'].max()}",
+                'source': 'issue_d에서 추출'
+            },
+            'issue_quarter': {
+                'description': '대출 발행 분기',
+                'purpose': '대출 시점 분기 정보',
+                'value_type': 'Numeric (1-4)',
+                'values': f"범위: {self.df['issue_quarter'].min()}-{self.df['issue_quarter'].max()}",
+                'source': 'issue_d에서 추출'
+            },
+            'issue_season': {
+                'description': '대출 발행 계절',
+                'purpose': '대출 시점 계절 정보',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['issue_season'].unique() if pd.notna(x)])}",
+                'source': 'issue_month 기반 계절 분류'
+            },
+            'is_recession_year': {
+                'description': '경기 침체 연도 여부',
+                'purpose': '경기 사이클 정보',
+                'value_type': 'Binary (0/1)',
+                'values': '0: 정상 연도, 1: 경기 침체 연도',
+                'source': 'issue_year 기반 경기 침체 판단'
+            },
+            'credit_history_years': {
+                'description': '신용 이력 기간 (년)',
+                'purpose': '신용 이력 길이',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['credit_history_years'].min():.1f}-{self.df['credit_history_years'].max():.1f}",
+                'source': 'issue_date - earliest_cr_date'
+            },
+            'credit_history_category': {
+                'description': '신용 이력 카테고리',
+                'purpose': '신용 이력 길이 분류',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['credit_history_category'].unique() if pd.notna(x)])}",
+                'source': 'credit_history_years 구간화'
+            },
+            
+            # 복합 지표 변수
+            'fico_improvement': {
+                'description': 'FICO 점수 개선 여부',
+                'purpose': '신용도 개선 지표',
+                'value_type': 'Binary (0/1)',
+                'values': '0: 개선 없음, 1: 개선됨',
+                'source': 'fico_change_rate > 0'
+            },
+            'fico_decline': {
+                'description': 'FICO 점수 하락 여부',
+                'purpose': '신용도 하락 지표',
+                'value_type': 'Binary (0/1)',
+                'values': '0: 하락 없음, 1: 하락됨',
+                'source': 'fico_change_rate < 0'
+            },
+            'debt_to_income_ratio': {
+                'description': '부채 대비 소득 비율',
+                'purpose': '부채 상환 능력 지표',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['debt_to_income_ratio'].min():.1f}-{self.df['debt_to_income_ratio'].max():.1f}",
+                'source': 'dti 변수'
+            },
+            'income_category': {
+                'description': '소득 수준 카테고리',
+                'purpose': '소득 수준 분류',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['income_category'].unique() if pd.notna(x)])}",
+                'source': 'annual_inc 구간화'
+            },
+            'delinquency_severity': {
+                'description': '연체 심각도',
+                'purpose': '연체 이력 심각도 분류',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['delinquency_severity'].unique() if pd.notna(x)])}",
+                'source': 'delinq_2yrs 구간화'
+            },
+            'credit_utilization_risk': {
+                'description': '신용 이용률 위험도',
+                'purpose': '신용 카드 이용률 위험 분류',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['credit_utilization_risk'].unique() if pd.notna(x)])}",
+                'source': 'revol_util 구간화'
+            },
+            'account_diversity_ratio': {
+                'description': '계좌 다양성 비율',
+                'purpose': '계좌 다양성 지표',
+                'value_type': 'Numeric (0-1)',
+                'values': f"범위: {self.df['account_diversity_ratio'].min():.3f}-{self.df['account_diversity_ratio'].max():.3f}",
+                'source': 'open_acc / total_acc'
+            },
+            'account_diversity_score': {
+                'description': '계좌 다양성 점수',
+                'purpose': '계좌 다양성 등급',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['account_diversity_score'].unique() if pd.notna(x)])}",
+                'source': 'account_diversity_ratio 구간화'
+            },
+            
+            # 금융 모델링 변수
+            'loan_to_income_ratio': {
+                'description': '대출 대비 소득 비율',
+                'purpose': '대출 상환 능력 지표',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['loan_to_income_ratio'].min():.3f}-{self.df['loan_to_income_ratio'].max():.3f}",
+                'source': 'loan_amnt / annual_inc'
+            },
+            'monthly_payment_ratio': {
+                'description': '월별 결제 대비 소득 비율',
+                'purpose': '월별 상환 부담 지표',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['monthly_payment_ratio'].min():.3f}-{self.df['monthly_payment_ratio'].max():.3f}",
+                'source': '(installment * 12) / annual_inc'
+            },
+            'grade_risk_score': {
+                'description': '신용 등급 위험도 점수',
+                'purpose': '신용 등급별 위험도',
+                'value_type': 'Numeric (1-7)',
+                'values': f"범위: {self.df['grade_risk_score'].min()}-{self.df['grade_risk_score'].max()}",
+                'source': 'grade 순서형 변환'
+            },
+            'term_months': {
+                'description': '대출 기간 (개월)',
+                'purpose': '대출 기간 정보',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['term_months'].min()}-{self.df['term_months'].max()}",
+                'source': 'term에서 개월 수 추출'
+            },
+            'term_risk_score': {
+                'description': '대출 기간 위험도',
+                'purpose': '대출 기간별 위험 분류',
+                'value_type': 'Categorical',
+                'values': f"고유값: {', '.join([str(x) for x in self.df['term_risk_score'].unique() if pd.notna(x)])}",
+                'source': 'term_months 구간화'
+            },
+            'expected_return_rate': {
+                'description': '예상 수익률',
+                'purpose': 'Sharpe Ratio 계산용 수익률',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['expected_return_rate'].min():.2f}-{self.df['expected_return_rate'].max():.2f}",
+                'source': 'int_rate - (grade_risk_score * 0.5)'
+            },
+            'risk_adjusted_return': {
+                'description': '위험조정수익률',
+                'purpose': 'Sharpe Ratio 계산용',
+                'value_type': 'Numeric',
+                'values': f"범위: {self.df['risk_adjusted_return'].min():.2f}-{self.df['risk_adjusted_return'].max():.2f}",
+                'source': 'expected_return_rate / grade_risk_score'
+            }
         }
         
         separation_info_path = os.path.join(self.output_dir, 'data_separation_info.txt')
@@ -872,13 +1140,62 @@ class IntegratedPreprocessingPipeline:
             f.write(f"새로 추가된 컬럼 수: {len(separation_info['new_columns'])}\n")
             f.write(f"제거된 컬럼 수: {len(separation_info['removed_columns'])}\n\n")
             
-            f.write("=== 새로 추가된 컬럼들 ===\n")
+            f.write("=== 파생 변수 상세 정보 ===\n\n")
+            
+            total_derived_count = 0
+            for category, info in derived_variables.items():
+                category_vars = [var for var in info['variables'] if var in separation_info['new_columns']]
+                if category_vars:
+                    f.write(f"📊 {info['description']}\n")
+                    f.write(f"   개수: {len(category_vars)}개\n")
+                    f.write(f"   변수들:\n")
+                    for var in category_vars:
+                        f.write(f"     - {var}\n")
+                    f.write("\n")
+                    total_derived_count += len(category_vars)
+            
+            f.write(f"📈 파생 변수 총 개수: {total_derived_count}개\n\n")
+            
+            # 변수별 상세 정보 추가
+            f.write("=== 변수별 상세 정보 ===\n\n")
+            
+            for var_name, details in variable_details.items():
+                if var_name in self.df.columns:
+                    f.write(f"🔍 {var_name}\n")
+                    f.write(f"   설명: {details['description']}\n")
+                    f.write(f"   용도: {details['purpose']}\n")
+                    f.write(f"   데이터 타입: {details['value_type']}\n")
+                    f.write(f"   값 범위: {details['values']}\n")
+                    f.write(f"   생성 방법: {details['source']}\n")
+                    f.write("\n")
+            
+            f.write("=== 새로 추가된 컬럼들 (전체) ===\n")
             for col in separation_info['new_columns']:
                 f.write(f"- {col}\n")
             
             f.write("\n=== 제거된 컬럼들 ===\n")
             for col in separation_info['removed_columns']:
                 f.write(f"- {col}\n")
+            
+            # 파생 변수 생성 과정 요약
+            f.write("\n=== 파생 변수 생성 과정 요약 ===\n")
+            f.write("1. 타겟 변수 생성: loan_status → target (0: 정상, 1: 부도)\n")
+            f.write("2. 결측치 표시 변수: 30% 이상 결측치가 있는 변수들에 대해 _is_missing 플래그 생성\n")
+            f.write("3. FICO 변수: fico_range_low/high → fico_avg, fico_change, fico_range\n")
+            f.write("4. 범주형 인코딩: sub_grade → sub_grade_ordinal, emp_length → emp_length_numeric\n")
+            f.write("5. 주 데이터 최적화: 상위 99% 주만 유지, 나머지는 'OTHER'로 그룹화\n")
+            f.write("6. 시간 기반 변수: issue_d → issue_date, issue_year, issue_month, issue_quarter, issue_season\n")
+            f.write("7. 복합 지표: 신용 점수 변화율, 소득 대비 부채 비율, 연체 심각도 등\n")
+            f.write("8. 금융 모델링 변수: 대출 대비 소득 비율, 월별 결제 비율, 위험도 점수 등\n")
+            
+            # 데이터 품질 지표
+            f.write("\n=== 데이터 품질 지표 ===\n")
+            f.write(f"전체 결측치 비율: {(self.df.isnull().sum().sum() / (len(self.df) * len(self.df.columns))) * 100:.2f}%\n")
+            f.write(f"수치형 변수 수: {len(self.df.select_dtypes(include=[np.number]).columns)}개\n")
+            f.write(f"범주형 변수 수: {len(self.df.select_dtypes(include=['object', 'category']).columns)}개\n")
+            if 'target' in self.df.columns:
+                target_dist = self.df['target'].value_counts()
+                f.write(f"타겟 변수 분포: 정상 {target_dist[0]}개, 부도 {target_dist[1]}개\n")
         
         print(f"  데이터 분리 정보 저장: {separation_info_path}")
         
@@ -1043,7 +1360,7 @@ class IntegratedPreprocessingPipeline:
     
     def remove_unnecessary_features(self):
         start_time = time.time()
-        print("\n🗑️ 모델링에 불필요한 특성 제거")
+        print("\n��️ 모델링에 불필요한 특성 제거")
         print("-" * 40)
         
         # 제거할 특성들 정의 (수정됨 - 중요 특성 보존)
@@ -1098,6 +1415,60 @@ class IntegratedPreprocessingPipeline:
         self.execution_times['remove_unnecessary_features'] = time.time() - start_time
         return True
     
+    def filter_is_missing_features(self):
+        """is_missing 특성 필터링 (중요도 기반)"""
+        start_time = time.time()
+        print("\n🔍 is_missing 특성 필터링")
+        print("-" * 40)
+        
+        if 'target' not in self.df.columns:
+            print("  ⚠️ 타겟 변수가 없어 필터링을 건너뜀")
+            return True
+        
+        # is_missing 특성들 찾기
+        is_missing_features = [col for col in self.df.columns if col.endswith('_is_missing')]
+        
+        if not is_missing_features:
+            print("  ✓ is_missing 특성이 없음")
+            return True
+        
+        print(f"  발견된 is_missing 특성: {len(is_missing_features)}개")
+        
+        # 중요도 평가
+        important_is_missing = []
+        correlation_threshold = 0.05  # 상관관계 임계값
+        
+        for feature in is_missing_features:
+            # 타겟과의 상관관계 계산
+            correlation = abs(self.df[feature].corr(self.df['target']))
+            
+            # 결측치 비율 계산
+            missing_ratio = self.df[feature].mean()
+            
+            # 중요도 점수 (상관관계 + 결측치 비율)
+            importance_score = correlation * missing_ratio
+            
+            print(f"    {feature}: 상관관계={correlation:.4f}, 결측비율={missing_ratio:.2f}, 중요도={importance_score:.4f}")
+            
+            # 중요도가 높거나 상관관계가 임계값을 넘는 특성만 유지
+            if correlation > correlation_threshold or importance_score > 0.01:
+                important_is_missing.append(feature)
+                print(f"      ✓ 보존: {feature}")
+            else:
+                print(f"      ❌ 제거: {feature}")
+        
+        # 중요하지 않은 is_missing 특성 제거
+        unimportant_features = [f for f in is_missing_features if f not in important_is_missing]
+        if unimportant_features:
+            self.df = self.df.drop(columns=unimportant_features)
+            print(f"  ✓ 제거된 is_missing 특성: {len(unimportant_features)}개")
+            print(f"  ✓ 보존된 is_missing 특성: {len(important_is_missing)}개")
+        else:
+            print(f"  ✓ 모든 is_missing 특성이 중요하여 보존됨")
+        
+        self.execution_times['is_missing_filtering'] = time.time() - start_time
+        return True
+    
     def run_pipeline(self, create_clean=True):
         """전체 파이프라인 실행"""
         start_time = time.time()
@@ -1113,6 +1484,7 @@ class IntegratedPreprocessingPipeline:
             ("타겟 변수 생성", self.create_target_variable),
             ("문자열 데이터 정리", self.clean_percentage_columns),
             ("높은 결측치 특성 처리", self.handle_high_missing_features),
+            ("is_missing 특성 필터링", self.filter_is_missing_features),
             ("FICO 특성 생성", self.create_fico_features),
             ("범주형 변수 인코딩", self.enhanced_categorical_encoding),
             ("이상치 처리", self.handle_outliers),

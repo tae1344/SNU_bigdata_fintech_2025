@@ -1,0 +1,487 @@
+=== 데이터 분리 정보 ===
+
+원본 컬럼 수: 141
+전처리 후 컬럼 수: 180
+새로 추가된 컬럼 수: 84
+제거된 컬럼 수: 45
+
+=== 파생 변수 상세 정보 ===
+
+📊 타겟 변수 (부도 예측용)
+   개수: 1개
+   변수들:
+     - target
+
+📊 결측치 표시 변수 (30% 이상 결측치가 있는 변수들)
+   개수: 47개
+   변수들:
+     - mths_since_last_delinq_is_missing
+     - mths_since_last_record_is_missing
+     - next_pymnt_d_is_missing
+     - mths_since_last_major_derog_is_missing
+     - annual_inc_joint_is_missing
+     - dti_joint_is_missing
+     - verification_status_joint_is_missing
+     - open_acc_6m_is_missing
+     - open_act_il_is_missing
+     - open_il_12m_is_missing
+     - open_il_24m_is_missing
+     - mths_since_rcnt_il_is_missing
+     - total_bal_il_is_missing
+     - il_util_is_missing
+     - open_rv_12m_is_missing
+     - open_rv_24m_is_missing
+     - max_bal_bc_is_missing
+     - all_util_is_missing
+     - inq_fi_is_missing
+     - total_cu_tl_is_missing
+     - inq_last_12m_is_missing
+     - revol_bal_joint_is_missing
+     - sec_app_fico_range_low_is_missing
+     - sec_app_fico_range_high_is_missing
+     - sec_app_earliest_cr_line_is_missing
+     - sec_app_inq_last_6mths_is_missing
+     - sec_app_mort_acc_is_missing
+     - sec_app_open_acc_is_missing
+     - sec_app_revol_util_is_missing
+     - sec_app_open_act_il_is_missing
+     - sec_app_num_rev_accts_is_missing
+     - sec_app_chargeoff_within_12_mths_is_missing
+     - sec_app_collections_12_mths_ex_med_is_missing
+     - hardship_type_is_missing
+     - hardship_reason_is_missing
+     - hardship_status_is_missing
+     - deferral_term_is_missing
+     - hardship_amount_is_missing
+     - hardship_start_date_is_missing
+     - hardship_end_date_is_missing
+     - payment_plan_start_date_is_missing
+     - hardship_length_is_missing
+     - hardship_dpd_is_missing
+     - hardship_loan_status_is_missing
+     - orig_projected_additional_accrued_interest_is_missing
+     - hardship_payoff_balance_amount_is_missing
+     - hardship_last_payment_amount_is_missing
+
+📊 FICO 점수 관련 파생 변수
+   개수: 5개
+   변수들:
+     - fico_avg
+     - last_fico_avg
+     - fico_change
+     - fico_change_rate
+     - fico_range
+
+📊 범주형 변수 인코딩 결과
+   개수: 3개
+   변수들:
+     - sub_grade_ordinal
+     - emp_length_numeric
+     - emp_length_is_na
+
+📊 주(state) 데이터 최적화 결과
+   개수: 1개
+   변수들:
+     - addr_state_optimized
+
+📊 시간 기반 파생 변수
+   개수: 12개
+   변수들:
+     - issue_date
+     - issue_year
+     - issue_month
+     - issue_quarter
+     - issue_season
+     - is_recession_year
+     - earliest_cr_date
+     - credit_history_months
+     - credit_history_years
+     - credit_history_category
+     - last_pymnt_date
+     - days_since_last_payment
+
+📊 복합 지표 변수
+   개수: 8개
+   변수들:
+     - fico_improvement
+     - fico_decline
+     - debt_to_income_ratio
+     - income_category
+     - delinquency_severity
+     - credit_utilization_risk
+     - account_diversity_ratio
+     - account_diversity_score
+
+📊 금융 모델링 전용 변수 (Sharpe Ratio 계산용)
+   개수: 7개
+   변수들:
+     - loan_to_income_ratio
+     - monthly_payment_ratio
+     - grade_risk_score
+     - term_months
+     - term_risk_score
+     - expected_return_rate
+     - risk_adjusted_return
+
+📈 파생 변수 총 개수: 84개
+
+=== 변수별 상세 정보 ===
+
+🔍 target
+   설명: 부도 예측 타겟 변수
+   용도: 모델 학습 및 평가용 타겟
+   데이터 타입: Binary (0/1)
+   값 범위: 0: 정상, 1: 부도
+   생성 방법: loan_status 변환
+
+🔍 fico_avg
+   설명: FICO 점수 평균값
+   용도: 신용도 평가 핵심 지표
+   데이터 타입: Numeric (300-850)
+   값 범위: 범위: 662-848
+   생성 방법: fico_range_low + fico_range_high / 2
+
+🔍 fico_change
+   설명: FICO 점수 변화량
+   용도: 신용도 변화 추적
+   데이터 타입: Numeric
+   값 범위: 범위: -492-140
+   생성 방법: last_fico_avg - fico_avg
+
+🔍 fico_change_rate
+   설명: FICO 점수 변화율
+   용도: 신용도 변화 비율
+   데이터 타입: Numeric (Percentage)
+   값 범위: 범위: -0.664-0.210
+   생성 방법: fico_change / fico_avg
+
+🔍 fico_range
+   설명: FICO 점수 구간
+   용도: 신용도 등급 분류
+   데이터 타입: Categorical
+   값 범위: 고유값: 650-699, 750-799, 700-749, 800-849
+   생성 방법: fico_avg 구간화
+
+🔍 sub_grade_ordinal
+   설명: 서브 등급 순서형 인코딩
+   용도: 신용 등급 순서 정보
+   데이터 타입: Numeric (0-34)
+   값 범위: 범위: 0-33
+   생성 방법: sub_grade 순서형 변환
+
+🔍 emp_length_numeric
+   설명: 근무 기간 수치화
+   용도: 근무 기간 정보
+   데이터 타입: Numeric (0.5-10)
+   값 범위: 범위: 0.0-10.0
+   생성 방법: emp_length 수치화
+
+🔍 emp_length_is_na
+   설명: 근무 기간 결측치 플래그
+   용도: 근무 기간 정보 부재 표시
+   데이터 타입: Binary (0/1)
+   값 범위: 0: 정보 있음, 1: 정보 없음
+   생성 방법: emp_length 결측치 확인
+
+🔍 issue_year
+   설명: 대출 발행 연도
+   용도: 대출 시점 연도 정보
+   데이터 타입: Numeric
+   값 범위: 범위: 2008-2020
+   생성 방법: issue_d에서 추출
+
+🔍 issue_month
+   설명: 대출 발행 월
+   용도: 대출 시점 월 정보
+   데이터 타입: Numeric (1-12)
+   값 범위: 범위: 1-12
+   생성 방법: issue_d에서 추출
+
+🔍 issue_quarter
+   설명: 대출 발행 분기
+   용도: 대출 시점 분기 정보
+   데이터 타입: Numeric (1-4)
+   값 범위: 범위: 1-4
+   생성 방법: issue_d에서 추출
+
+🔍 issue_season
+   설명: 대출 발행 계절
+   용도: 대출 시점 계절 정보
+   데이터 타입: Categorical
+   값 범위: 고유값: Summer, Winter, Spring, Fall
+   생성 방법: issue_month 기반 계절 분류
+
+🔍 is_recession_year
+   설명: 경기 침체 연도 여부
+   용도: 경기 사이클 정보
+   데이터 타입: Binary (0/1)
+   값 범위: 0: 정상 연도, 1: 경기 침체 연도
+   생성 방법: issue_year 기반 경기 침체 판단
+
+🔍 credit_history_years
+   설명: 신용 이력 기간 (년)
+   용도: 신용 이력 길이
+   데이터 타입: Numeric
+   값 범위: 범위: 3.1-49.0
+   생성 방법: issue_date - earliest_cr_date
+
+🔍 credit_history_category
+   설명: 신용 이력 카테고리
+   용도: 신용 이력 길이 분류
+   데이터 타입: Categorical
+   값 범위: 고유값: Veteran, Established, Young
+   생성 방법: credit_history_years 구간화
+
+🔍 fico_improvement
+   설명: FICO 점수 개선 여부
+   용도: 신용도 개선 지표
+   데이터 타입: Binary (0/1)
+   값 범위: 0: 개선 없음, 1: 개선됨
+   생성 방법: fico_change_rate > 0
+
+🔍 fico_decline
+   설명: FICO 점수 하락 여부
+   용도: 신용도 하락 지표
+   데이터 타입: Binary (0/1)
+   값 범위: 0: 하락 없음, 1: 하락됨
+   생성 방법: fico_change_rate < 0
+
+🔍 debt_to_income_ratio
+   설명: 부채 대비 소득 비율
+   용도: 부채 상환 능력 지표
+   데이터 타입: Numeric
+   값 범위: 범위: 0.0-84.0
+   생성 방법: dti 변수
+
+🔍 income_category
+   설명: 소득 수준 카테고리
+   용도: 소득 수준 분류
+   데이터 타입: Categorical
+   값 범위: 고유값: Very High, Low, Medium, High
+   생성 방법: annual_inc 구간화
+
+🔍 delinquency_severity
+   설명: 연체 심각도
+   용도: 연체 이력 심각도 분류
+   데이터 타입: Categorical
+   값 범위: 고유값: None, Low, Medium, High
+   생성 방법: delinq_2yrs 구간화
+
+🔍 credit_utilization_risk
+   설명: 신용 이용률 위험도
+   용도: 신용 카드 이용률 위험 분류
+   데이터 타입: Categorical
+   값 범위: 고유값: High, Medium, Low, Very High
+   생성 방법: revol_util 구간화
+
+🔍 account_diversity_ratio
+   설명: 계좌 다양성 비율
+   용도: 계좌 다양성 지표
+   데이터 타입: Numeric (0-1)
+   값 범위: 범위: 0.105-1.000
+   생성 방법: open_acc / total_acc
+
+🔍 account_diversity_score
+   설명: 계좌 다양성 점수
+   용도: 계좌 다양성 등급
+   데이터 타입: Categorical
+   값 범위: 고유값: High, Medium, Low, Very High
+   생성 방법: account_diversity_ratio 구간화
+
+🔍 loan_to_income_ratio
+   설명: 대출 대비 소득 비율
+   용도: 대출 상환 능력 지표
+   데이터 타입: Numeric
+   값 범위: 범위: 0.015-3.889
+   생성 방법: loan_amnt / annual_inc
+
+🔍 monthly_payment_ratio
+   설명: 월별 결제 대비 소득 비율
+   용도: 월별 상환 부담 지표
+   데이터 타입: Numeric
+   값 범위: 범위: 0.006-1.135
+   생성 방법: (installment * 12) / annual_inc
+
+🔍 grade_risk_score
+   설명: 신용 등급 위험도 점수
+   용도: 신용 등급별 위험도
+   데이터 타입: Numeric (1-7)
+   값 범위: 범위: 1-7
+   생성 방법: grade 순서형 변환
+
+🔍 term_months
+   설명: 대출 기간 (개월)
+   용도: 대출 기간 정보
+   데이터 타입: Numeric
+   값 범위: 범위: 36.0-60.0
+   생성 방법: term에서 개월 수 추출
+
+🔍 term_risk_score
+   설명: 대출 기간 위험도
+   용도: 대출 기간별 위험 분류
+   데이터 타입: Categorical
+   값 범위: 고유값: Low, Medium
+   생성 방법: term_months 구간화
+
+🔍 expected_return_rate
+   설명: 예상 수익률
+   용도: Sharpe Ratio 계산용 수익률
+   데이터 타입: Numeric
+   값 범위: 범위: 4.82-27.75
+   생성 방법: int_rate - (grade_risk_score * 0.5)
+
+🔍 risk_adjusted_return
+   설명: 위험조정수익률
+   용도: Sharpe Ratio 계산용
+   데이터 타입: Numeric
+   값 범위: 범위: 2.47-9.69
+   생성 방법: expected_return_rate / grade_risk_score
+
+=== 새로 추가된 컬럼들 (전체) ===
+- target
+- mths_since_last_delinq_is_missing
+- mths_since_last_record_is_missing
+- next_pymnt_d_is_missing
+- mths_since_last_major_derog_is_missing
+- annual_inc_joint_is_missing
+- dti_joint_is_missing
+- verification_status_joint_is_missing
+- open_acc_6m_is_missing
+- open_act_il_is_missing
+- open_il_12m_is_missing
+- open_il_24m_is_missing
+- mths_since_rcnt_il_is_missing
+- total_bal_il_is_missing
+- il_util_is_missing
+- open_rv_12m_is_missing
+- open_rv_24m_is_missing
+- max_bal_bc_is_missing
+- all_util_is_missing
+- inq_fi_is_missing
+- total_cu_tl_is_missing
+- inq_last_12m_is_missing
+- revol_bal_joint_is_missing
+- sec_app_fico_range_low_is_missing
+- sec_app_fico_range_high_is_missing
+- sec_app_earliest_cr_line_is_missing
+- sec_app_inq_last_6mths_is_missing
+- sec_app_mort_acc_is_missing
+- sec_app_open_acc_is_missing
+- sec_app_revol_util_is_missing
+- sec_app_open_act_il_is_missing
+- sec_app_num_rev_accts_is_missing
+- sec_app_chargeoff_within_12_mths_is_missing
+- sec_app_collections_12_mths_ex_med_is_missing
+- hardship_type_is_missing
+- hardship_reason_is_missing
+- hardship_status_is_missing
+- deferral_term_is_missing
+- hardship_amount_is_missing
+- hardship_start_date_is_missing
+- hardship_end_date_is_missing
+- payment_plan_start_date_is_missing
+- hardship_length_is_missing
+- hardship_dpd_is_missing
+- hardship_loan_status_is_missing
+- orig_projected_additional_accrued_interest_is_missing
+- hardship_payoff_balance_amount_is_missing
+- hardship_last_payment_amount_is_missing
+- fico_avg
+- last_fico_avg
+- fico_change
+- fico_change_rate
+- fico_range
+- sub_grade_ordinal
+- emp_length_numeric
+- emp_length_is_na
+- addr_state_optimized
+- issue_date
+- issue_year
+- issue_month
+- issue_quarter
+- issue_season
+- is_recession_year
+- earliest_cr_date
+- credit_history_months
+- credit_history_years
+- credit_history_category
+- last_pymnt_date
+- days_since_last_payment
+- fico_improvement
+- fico_decline
+- debt_to_income_ratio
+- income_category
+- delinquency_severity
+- credit_utilization_risk
+- account_diversity_ratio
+- account_diversity_score
+- loan_to_income_ratio
+- monthly_payment_ratio
+- grade_risk_score
+- term_months
+- term_risk_score
+- expected_return_rate
+- risk_adjusted_return
+
+=== 제거된 컬럼들 ===
+- id
+- emp_title
+- issue_d
+- url
+- title
+- zip_code
+- earliest_cr_line
+- fico_range_high
+- total_pymnt_inv
+- total_rec_prncp
+- total_rec_int
+- total_rec_late_fee
+- recoveries
+- collection_recovery_fee
+- last_pymnt_d
+- last_pymnt_amnt
+- next_pymnt_d
+- last_fico_range_high
+- last_fico_range_low
+- verification_status_joint
+- sec_app_fico_range_low
+- sec_app_fico_range_high
+- sec_app_earliest_cr_line
+- sec_app_inq_last_6mths
+- sec_app_mort_acc
+- sec_app_open_acc
+- sec_app_revol_util
+- sec_app_open_act_il
+- sec_app_num_rev_accts
+- sec_app_chargeoff_within_12_mths
+- sec_app_collections_12_mths_ex_med
+- hardship_type
+- hardship_reason
+- hardship_status
+- deferral_term
+- hardship_amount
+- hardship_start_date
+- hardship_end_date
+- payment_plan_start_date
+- hardship_length
+- hardship_dpd
+- hardship_loan_status
+- orig_projected_additional_accrued_interest
+- hardship_payoff_balance_amount
+- hardship_last_payment_amount
+
+=== 파생 변수 생성 과정 요약 ===
+1. 타겟 변수 생성: loan_status → target (0: 정상, 1: 부도)
+2. 결측치 표시 변수: 30% 이상 결측치가 있는 변수들에 대해 _is_missing 플래그 생성
+3. FICO 변수: fico_range_low/high → fico_avg, fico_change, fico_range
+4. 범주형 인코딩: sub_grade → sub_grade_ordinal, emp_length → emp_length_numeric
+5. 주 데이터 최적화: 상위 99% 주만 유지, 나머지는 'OTHER'로 그룹화
+6. 시간 기반 변수: issue_d → issue_date, issue_year, issue_month, issue_quarter, issue_season
+7. 복합 지표: 신용 점수 변화율, 소득 대비 부채 비율, 연체 심각도 등
+8. 금융 모델링 변수: 대출 대비 소득 비율, 월별 결제 비율, 위험도 점수 등
+
+=== 데이터 품질 지표 ===
+전체 결측치 비율: 0.57%
+수치형 변수 수: 153개
+범주형 변수 수: 24개
+타겟 변수 분포: 정상 874개, 부도 125개
