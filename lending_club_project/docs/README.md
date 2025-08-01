@@ -24,7 +24,7 @@ Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다
 #### **Phase 2: 모델 개발 (부분 완료)**
 
 - ✅ **Milestone 2.1**: 기본 모델 구현 (4개 모델: 로지스틱, 랜덤포레스트, XGBoost, LightGBM)
-- ⏳ **Milestone 2.2**: 모델 평가 프레임워크 구축 (진행 중)
+- ✅ **Milestone 2.2**: 모델 평가 프레임워크 구축 (Train/Validation/Test Split, 자동 평가/보고서)
 - ⏳ **Milestone 2.3**: 하이퍼파라미터 튜닝 (대기 중)
 
 ### 🔥 최근 주요 성과
@@ -41,7 +41,13 @@ Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다
    - 랜덤포레스트 ROC-AUC 0.6709 달성
    - 확장 가능한 아키텍처 구축
 
-3. **체계적인 문서화**
+3. **모델 평가 프레임워크 자동화**
+
+   - Train/Validation/Test Split 함수 및 데이터 검증 자동화
+   - 모델별 성능 비교, 교차검증, ROC-AUC 등 주요 지표 자동 산출
+   - 평가 결과를 표로 정리한 보고서 자동 생성 (`reports/model_evaluation_report.txt`)
+
+4. **체계적인 문서화**
    - 모든 과정에 대한 상세한 문서화 완료
    - 재현 가능한 코드 구조
 
@@ -49,22 +55,21 @@ Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다
 
 ### 즉시 진행할 작업
 
-1. **모델 평가 프레임워크 구축 (Milestone 2.2)**
+1. **하이퍼파라미터 튜닝 (Milestone 2.3)**
 
-   - Train/Validation/Test Split 함수 구현
-   - Cross Validation 함수 구현
-   - Sharpe Ratio 기반 평가 지표 구현
-
-2. **하이퍼파라미터 튜닝 (Milestone 2.3)**
    - Grid Search / Random Search 구현
    - Bayesian Optimization 적용
    - 각 모델별 최적 파라미터 도출
 
+2. **금융 모델링 시스템 구축**
+   - 현금흐름 계산 시스템
+   - 투자 시나리오 시뮬레이션
+   - Sharpe Ratio 계산
+
 ### 중장기 계획
 
-1. **금융 모델링 시스템 구축**
-2. **반복 검증 시스템 구현**
-3. **최종 모델 최적화**
+1. **반복 검증 시스템 구현**
+2. **최종 모델 최적화**
 
 ## 📁 프로젝트 구조
 
@@ -85,13 +90,15 @@ lending_club_project/
 │   └── statistical_validation_system.py         # 통계적 검증 시스템
 ├── modeling/                 # 모델링
 │   ├── basic_models.py       # 기본 모델 구현
+│   ├── model_evaluation_framework.py  # 모델 평가 프레임워크
 │   └── credit_risk_modeling_pipeline.py  # 완전한 모델링 파이프라인
 ├── reports/                  # 보고서 및 결과
 │   ├── feature_selection_analysis_report.txt    # 특성 선택 분석
 │   ├── feature_selection_strategy_report.txt    # 특성 선택 전략
 │   ├── modeling_variables_analysis_report.txt   # 변수 분석
 │   ├── clean_modeling_dataset_report.txt        # 깨끗한 데이터셋 보고서
-│   └── basic_models_performance_report.txt      # 모델 성능 비교
+│   ├── basic_models_performance_report.txt      # 모델 성능 비교
+│   └── model_evaluation_report.txt              # 모델 평가 보고서
 └── docs/                     # 문서
     ├── project_docs/         # 프로젝트 문서
     ├── preprocessing_improvement_todos.md       # 전처리 개선사항
@@ -114,6 +121,7 @@ lending_club_project/
 - **모델링**: 다양한 알고리즘 비교 및 앙상블 기법
 - **평가**: ROC-AUC, 분류 리포트, 혼동 행렬
 - **검증**: 통계적 검증 시스템, 데이터 품질 모니터링
+- **자동화**: Train/Validation/Test Split, 교차검증, 성능 지표 자동 계산
 
 ## 📈 주요 성과 지표
 
@@ -134,6 +142,7 @@ lending_club_project/
 - **데이터 누출 방지**: 후행지표 완전 제거
 - **실제 운영 가능**: 승인 시점 변수만 사용
 - **문서화 완성**: 모든 과정에 대한 상세한 문서화
+- **자동화**: 모델 평가 프레임워크로 재현성 및 신뢰성 향상
 
 ## ⚠️ 주의사항
 
@@ -148,6 +157,7 @@ lending_club_project/
 - **단계적 접근**: 1차(필수) → 2차(확장) → 3차(전체) → 앙상블
 - **금융적 관점**: 단순 분류 성능이 아닌 Sharpe Ratio 최적화
 - **안정성 확보**: 반복적인 검증을 통한 모델 안정성 확보
+- **자동화**: Train/Validation/Test Split 및 평가 프로세스 자동화
 
 ## 📞 연락처
 
@@ -162,4 +172,4 @@ lending_club_project/
 ---
 
 **마지막 업데이트**: 2025년 현재  
-**문서 버전**: 1.1
+**문서 버전**: 1.2

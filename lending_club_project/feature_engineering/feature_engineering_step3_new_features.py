@@ -284,12 +284,12 @@ def create_time_based_features(df):
             })
             
             # 월말/월초 특성
-            df['is_month_end'] = df['issue_date'].dt.is_month_end.astype(int)
-            df['is_month_start'] = df['issue_date'].dt.is_month_start.astype(int)
+            # df['is_month_end'] = df['issue_date'].dt.is_month_end.astype(int)
+            # df['is_month_start'] = df['issue_date'].dt.is_month_start.astype(int)
             
             # 분기말/분기초 특성
-            df['is_quarter_end'] = df['issue_date'].dt.is_quarter_end.astype(int)
-            df['is_quarter_start'] = df['issue_date'].dt.is_quarter_start.astype(int)
+            # df['is_quarter_end'] = df['issue_date'].dt.is_quarter_end.astype(int)
+            # df['is_quarter_start'] = df['issue_date'].dt.is_quarter_start.astype(int)
             
             print(f"✓ 대출 발행 시점 특성 생성 완료")
             print(f"  연도 범위: {df['issue_year'].min()} ~ {df['issue_year'].max()}")

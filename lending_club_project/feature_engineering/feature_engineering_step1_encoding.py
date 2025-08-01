@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
 import os
+import warnings
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from config.file_paths import (
@@ -18,6 +20,13 @@ from config.file_paths import (
     file_exists,
     get_reports_file_path
 )
+
+warnings.filterwarnings('ignore')
+
+# 한글 폰트 설정 (macOS 기준)
+plt.rcParams['font.family'] = 'AppleGothic'
+plt.rcParams['axes.unicode_minus'] = False
+
 
 def enhanced_categorical_encoding(df):
     """
@@ -136,6 +145,9 @@ def enhanced_categorical_encoding(df):
         # 카이제곱 검정 수행
         chi2, p_value, dof, expected = chi2_contingency(contingency_table)
         
+        # p < 0.05: 유의한 관계 존재 (독립적이 아님)
+        # p ≥ 0.05: 유의한 관계 없음 (독립적)
+
         return {
             'chi2_statistic': chi2,
             'p_value': p_value,

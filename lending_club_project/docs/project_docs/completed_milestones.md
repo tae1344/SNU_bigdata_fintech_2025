@@ -79,8 +79,8 @@
 #### 생성된 파일:
 
 - `target_variable_definition.py`: 종속변수 정의 스크립트
-- `target_definition_report.txt`: 종속변수 정의 보고서
-- `class_distribution.png`: 클래스 분포 시각화
+- `improved_target_definition_report.txt`: 종속변수 정의 보고서
+- `improved_class_distribution.png`: 클래스 분포 시각화
 
 ---
 
@@ -318,6 +318,38 @@
 
 ---
 
+### Milestone 2.2: 모델 평가 프레임워크 구축 ✅
+
+**상태**: 완료
+
+#### 완료된 작업 내용:
+
+1. **Train/Validation/Test Split 함수 구현**
+
+   - 데이터셋을 훈련(60%), 검증(20%), 테스트(20%)로 계층적 분할하는 함수 구현
+   - 클래스 불균형을 고려한 stratified split 적용
+   - 분할 후 각 세트의 클래스 분포 및 부도율 자동 출력
+   - 결측치, 문자열, 무한값 등 데이터 타입 자동 정제 및 검증 로직 추가
+   - 분할 결과를 기반으로 모델별 성능 평가가 가능하도록 구조화
+
+2. **통합 모델 평가 프레임워크 구축**
+   - 분할된 데이터셋을 활용해 LogisticRegression, RandomForest 등 기본 모델 평가
+   - 교차검증(5-Fold) 및 ROC-AUC, PR-AUC 등 주요 지표 자동 산출
+   - 평가 결과를 표 형태로 보고서로 저장
+
+#### 생성된 파일:
+
+- `model_evaluation_framework.py`: Train/Validation/Test Split 및 평가 프레임워크 구현
+- `reports/model_evaluation_report.txt`: 모델별 성능 비교 자동 보고서
+
+#### 주요 성과:
+
+- 데이터 분할 및 검증 자동화로 재현성 및 신뢰성 향상
+- 모델별 성능 비교 및 교차검증 결과 체계적 산출
+- 향후 하이퍼파라미터 튜닝, 앙상블 등 확장 기반 마련
+
+---
+
 ## 전체 프로젝트 진행 상황
 
 ### Phase 1: 데이터 이해 및 전처리 (1-2주) ✅
@@ -330,7 +362,7 @@
 ### Phase 2: 모델 개발 (2-3주)
 
 - ✅ Milestone 2.1: 기본 모델 구현
-- ⏳ Milestone 2.2: 모델 평가 프레임워크 구축
+- ✅ Milestone 2.2: 모델 평가 프레임워크 구축
 - ⏳ Milestone 2.3: 하이퍼파라미터 튜닝
 
 ### Phase 3: 금융 모델링 (2-3주)
