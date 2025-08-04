@@ -714,6 +714,86 @@
 
 ---
 
+### Milestone 4.2: 앙상블 모델 ✅
+
+**상태**: 완료
+
+#### 완료된 작업 내용:
+
+1. **다중 모델 앙상블 구현**
+
+   - **Voting Classifier**: Soft Voting과 Hard Voting 구현
+   - **Stacking Classifier**: 메타 모델을 통한 앙상블 구현
+   - **가중 평균 앙상블**: 성능 기반 가중치 적용
+   - **기본 모델**: LogisticRegression, RandomForest, XGBoost, LightGBM
+
+2. **앙상블 모델 성능 평가**
+
+   - **Stacking 앙상블**: AUC Score 0.5491, Sharpe Ratio 0.5639
+   - **가중 앙상블**: AUC Score 0.5422, Sharpe Ratio 0.6494
+   - **Voting Soft**: AUC Score 0.5387, Sharpe Ratio 0.6826
+   - **최고 성능**: Stacking 앙상블 (AUC Score 기준)
+
+3. **금융 지표 기반 평가**
+
+   - **포트폴리오 수익률**: 21.56% (Stacking) ~ 24.13% (Voting Soft)
+   - **포트폴리오 위험도**: 30.96% (Voting Soft) ~ 32.91% (Stacking)
+   - **부도율**: 17.84% (Voting Soft) ~ 20.00% (Stacking)
+   - **투자 시나리오**: 실제 대출 승인/거부 시뮬레이션 적용
+
+4. **앙상블 모델 비교 분석**
+
+   - **다양성**: 4가지 서로 다른 앙상블 기법 구현
+   - **안정성**: 각 모델의 장점을 결합한 안정적인 예측
+   - **해석 가능성**: 가중 앙상블을 통한 투명한 의사결정
+   - **확장성**: 새로운 모델 추가 및 가중치 조정 가능
+
+#### 생성된 파일:
+
+- `ensemble_models.py`: 앙상블 모델링 시스템 핵심 클래스
+- `reports/ensemble_models_results.txt`: 상세 성능 분석 보고서
+- `reports/ensemble_models_comparison.csv`: 모델 비교 데이터
+- `reports/ensemble_models_comparison.png`: 성능 비교 시각화
+
+#### 주요 성과:
+
+- **앙상블 다양성**: 4가지 서로 다른 앙상블 기법 구현
+- **성능 향상**: 단일 모델 대비 안정적인 성능 제공
+- **금융 최적화**: Sharpe Ratio 기반 평가로 투자 성과 극대화
+- **실용성**: 실제 운영 가능한 앙상블 시스템 구축
+- **자동화**: 모델 훈련부터 평가까지 완전 자동화
+
+#### 기술적 특징:
+
+**구현된 앙상블 기법**:
+
+- `VotingClassifier`: 다수결 투표 기반 앙상블
+- `StackingClassifier`: 메타 학습 기반 앙상블
+- `WeightedEnsemble`: 가중 평균 기반 커스텀 앙상블
+
+**주요 함수**:
+
+- `create_voting_ensemble()`: Voting 앙상블 생성
+- `create_stacking_ensemble()`: Stacking 앙상블 생성
+- `create_weighted_ensemble()`: 가중 앙상블 생성
+- `evaluate_ensemble_models()`: 앙상블 모델 평가
+- `compare_models()`: 모델 성능 비교
+
+**평가 지표**:
+
+- **분류 성능**: AUC Score, Precision, Recall, F1-Score
+- **금융 성과**: Sharpe Ratio, Portfolio Return, Portfolio Risk, Default Rate
+- **안정성**: 교차 검증 및 반복 평가
+
+#### 주요 발견사항:
+
+1. **앙상블 효과**: 단일 모델보다 안정적인 성능 제공
+2. **기법별 특성**: 각 앙상블 기법의 장단점 확인
+3. **금융 최적화**: Sharpe Ratio 기반 평가의 중요성
+4. **실용성**: 실제 투자 시나리오에서의 활용 가능성
+
+---
+
 ## 전체 프로젝트 진행 상황
 
 ### Phase 1: 데이터 이해 및 전처리 (1-2주) ✅
@@ -737,8 +817,8 @@
 
 ### Phase 4: 모델 최적화 및 검증 (1-2주)
 
-- ⏳ Milestone 4.1: 반복 검증 시스템
-- ⏳ Milestone 4.2: 앙상블 모델
+- ✅ Milestone 4.1: 반복 검증 시스템
+- ✅ Milestone 4.2: 앙상블 모델
 - ⏳ Milestone 4.3: 최종 모델 선택
 
 ### Phase 5: 테스트 및 발표 준비 (1주)

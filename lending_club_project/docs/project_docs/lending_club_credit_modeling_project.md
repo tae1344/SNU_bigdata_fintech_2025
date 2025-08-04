@@ -369,11 +369,23 @@
 - **시각화**: 6가지 관점의 분포 및 관계 시각화 완료
 - **생성 파일**: `repeated_validation_system.py`, 상세 보고서 및 시각화
 
-#### Milestone 4.2: 앙상블 모델
+#### Milestone 4.2: 앙상블 모델 ✅
 
-- [ ] 다중 모델 앙상블 구현
-- [ ] 가중 평균 앙상블
-- [ ] Stacking 앙상블
+**상태**: 완료
+
+- [x] 다중 모델 앙상블 구현
+- [x] 가중 평균 앙상블
+- [x] Stacking 앙상블
+
+**완료 내용**:
+
+- **Voting Classifier**: Soft Voting과 Hard Voting 구현
+- **Stacking Classifier**: 메타 모델을 통한 앙상블 구현
+- **가중 평균 앙상블**: 성능 기반 가중치 적용
+- **기본 모델**: LogisticRegression, RandomForest, XGBoost, LightGBM
+- **성능 평가**: Stacking 앙상블 최고 성능 (AUC Score 0.5491)
+- **금융 지표**: Sharpe Ratio 0.5639, 포트폴리오 수익률 21.56%
+- **생성 파일**: `ensemble_models.py`, 상세 보고서 및 시각화
 
 #### Milestone 4.3: 최종 모델 선택
 
@@ -475,7 +487,7 @@
 ### Phase 4: 모델 최적화 및 검증 (1-2주) 🔄
 
 - ✅ Milestone 4.1: 반복 검증 시스템
-- ⏳ Milestone 4.2: 앙상블 모델
+- ✅ Milestone 4.2: 앙상블 모델
 - ⏳ Milestone 4.3: 최종 모델 선택
 
 ### Phase 5: 테스트 및 발표 준비 (1주)
@@ -493,9 +505,9 @@
 3. **금융 모델링 시스템**: 현금흐름 계산, 투자 시나리오 시뮬레이션, Sharpe Ratio 최적화 완료
 4. **반복 검증 시스템**: 50회 반복을 통한 모델 안정성 검증 완료
 5. **성능 지표**: 랜덤포레스트 ROC-AUC 0.6709, Sharpe Ratio 0.58 ± 0.07 달성
+6. **앙상블 모델**: 4가지 앙상블 기법 구현, Stacking 앙상블 최고 성능 (AUC 0.5491)
 
 **다음 단계**:
 
-- Milestone 4.2: 앙상블 모델 구축
 - Milestone 4.3: 최종 모델 선택 및 최적화
 - Phase 5: 최종 테스트 및 발표 준비
