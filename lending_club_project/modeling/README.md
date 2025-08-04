@@ -6,6 +6,7 @@
 
 ```
 modeling/
+├── modeling_pipeline.py               # 모델링 파이프라인 (각 스크립트 순차 실행)
 ├── basic_models.py                    # 기본 모델 구현 (로지스틱 회귀, 랜덤포레스트, XGBoost, LightGBM)
 ├── model_evaluation_framework.py      # 모델 평가 프레임워크 (Train/Validation/Test Split, 자동 평가)
 ├── hyperparameter_tuning.py           # 하이퍼파라미터 튜닝 (Grid Search, Random Search)
@@ -16,45 +17,155 @@ modeling/
 
 ## 🚀 실행 방법
 
-### 1. 기본 모델 구현
+### 1. 전체 파이프라인 실행 (권장)
 
 ```bash
 cd modeling
+python modeling_pipeline.py
+```
+
+**파이프라인 실행 순서:**
+
+1. `basic_models.py` - 기본 모델 구현
+2. `model_evaluation_framework.py` - 모델 평가 프레임워크
+3. `hyperparameter_tuning.py` - 하이퍼파라미터 튜닝
+4. `ensemble_models.py` - 앙상블 모델
+5. `final_model_selection.py` - 최종 모델 선택
+
+### 2. 특정 스크립트부터 파이프라인 실행
+
+```bash
+# 앙상블 모델부터 시작
+python modeling_pipeline.py --start-from ensemble_models.py
+
+# 하이퍼파라미터 튜닝부터 시작
+python modeling_pipeline.py --start-from hyperparameter_tuning.py
+```
+
+### 3. 개별 스크립트 실행
+
+```bash
+# 기본 모델 구현
 python basic_models.py
-```
 
-### 2. 모델 평가 프레임워크
-
-```bash
+# 모델 평가 프레임워크
 python model_evaluation_framework.py
-```
 
-### 3. 하이퍼파라미터 튜닝
-
-```bash
+# 하이퍼파라미터 튜닝
 python hyperparameter_tuning.py
-```
 
-### 4. 앙상블 모델
-
-```bash
+# 앙상블 모델
 python ensemble_models.py
-```
 
-### 5. 최종 모델 선택
-
-```bash
+# 최종 모델 선택
 python final_model_selection.py
 ```
 
-### 6. 실행 순서
+## 🔄 파이프라인 시스템
 
-1. **데이터 준비**: `feature_engineering/` 디렉토리의 스크립트들을 먼저 실행
-2. **기본 모델**: `basic_models.py` 실행
-3. **모델 평가**: `model_evaluation_framework.py` 실행
-4. **하이퍼파라미터 튜닝**: `hyperparameter_tuning.py` 실행
-5. **앙상블 모델**: `ensemble_models.py` 실행
-6. **최종 모델 선택**: `final_model_selection.py` 실행
+### 📋 ModelingPipeline 클래스
+
+`modeling_pipeline.py`는 각 모델링 스크립트들을 순차적으로 실행하는 파이프라인 시스템입니다.
+
+#### 주요 기능:
+
+1. **전제 조건 확인**
+
+   - feature_engineering 결과물 존재 확인
+   - 필수 전처리 파일들 체크
+
+2. **순차적 스크립트 실행**
+
+   - 각 스크립트를 subprocess로 실행
+   - 실행 시간 측정 및 모니터링
+   - 성공/실패 상태 추적
+
+3. **실행 결과 요약**
+   - 전체 성공률 계산
+   - 각 스크립트별 실행 시간
+   - 상세한 결과 리포트
+
+#### 실행 흐름:
+
+```
+feature_engineering/ → 전처리 완료
+    ↓
+modeling_pipeline.py → 파이프라인 시작
+    ↓
+1. basic_models.py (기본 모델)
+    ↓
+2. model_evaluation_framework.py (평가)
+    ↓
+3. hyperparameter_tuning.py (튜닝)
+    ↓
+4. ensemble_models.py (앙상블)
+    ↓
+5. final_model_selection.py (최종 선택)
+    ↓
+reports/ → 모든 결과물
+```
+
+#### 파이프라인 특징:
+
+- **자동화**: 전체 모델링 과정을 한 번에 실행
+- **모니터링**: 각 단계별 실행 상태 실시간 확인
+- **오류 처리**: 스크립트 실패 시 사용자 선택으로 중단/계속
+- **유연성**: 특정 스크립트부터 시작 가능
+- **요약 리포트**: 전체 실행 결과 종합 리포트
+
+### 📊 파이프라인 실행 예시
+
+```bash
+$ python modeling_pipeline.py
+
+🚀 모델링 파이프라인 시작
+================================================================================
+
+🔍 전제 조건 확인 중...
+✅ 전제 조건 확인 완료
+
+📋 실행할 스크립트들:
+  1. basic_models.py
+  2. model_evaluation_framework.py
+  3. hyperparameter_tuning.py
+  4. ensemble_models.py
+  5. final_model_selection.py
+
+================================================================================
+실행 중: basic_models.py
+================================================================================
+📤 출력:
+[기본 모델 실행 결과...]
+✅ basic_models.py 실행 완료 (45.23초)
+
+================================================================================
+실행 중: model_evaluation_framework.py
+================================================================================
+📤 출력:
+[모델 평가 실행 결과...]
+✅ model_evaluation_framework.py 실행 완료 (32.15초)
+
+...
+
+================================================================================
+📊 파이프라인 실행 결과 요약
+================================================================================
+
+전체 스크립트: 5개
+성공: 5개
+실패: 0개
+성공률: 100.0%
+
+📋 상세 결과:
+  basic_models.py: ✅ 성공 (45.23초)
+  model_evaluation_framework.py: ✅ 성공 (32.15초)
+  hyperparameter_tuning.py: ✅ 성공 (120.45초)
+  ensemble_models.py: ✅ 성공 (89.67초)
+  final_model_selection.py: ✅ 성공 (23.89초)
+
+🎉 모든 스크립트가 성공적으로 실행되었습니다!
+📁 결과물은 reports/ 디렉토리에서 확인할 수 있습니다.
+```
 
 ## 📊 모델별 상세 분석
 
@@ -256,6 +367,212 @@ python final_model_selection.py
 - **실용성**: 실제 운영 가능한 모델 선택 및 저장
 - **시각화**: 6개 차원의 성능 비교 시각화
 
+## 📊 모델링별 데이터 활용 전략
+
+### 🎯 특성 엔지니어링과의 연계
+
+이 모델링 시스템은 `feature_engineering/` 디렉토리에서 생성된 다양한 데이터 파일들을 모델별로 최적화하여 활용합니다.
+
+### 📋 단계별 데이터 파일 활용
+
+#### **1단계: 기본 전처리 데이터**
+
+```python
+# feature_engineering_step1_encoding.py
+lending_club_sample_encoded.csv
+```
+
+- **용도**: 범주형 변수가 수치형으로 변환된 기본 데이터
+- **모델링**: 모든 모델의 기본 입력 데이터
+
+#### **2단계: 스케일링된 데이터**
+
+```python
+# feature_engineering_step2_scaling.py
+lending_club_sample_scaled_standard.csv  # StandardScaler
+lending_club_sample_scaled_minmax.csv    # MinMaxScaler
+```
+
+- **StandardScaler**: 선형 모델(로지스틱 회귀)에 적합
+- **MinMaxScaler**: 트리 기반 모델(랜덤포레스트, XGBoost)에 적합
+
+#### **3단계: 새로운 특성이 추가된 데이터**
+
+```python
+# feature_engineering_step3_new_features.py
+lending_club_sample_with_new_features.csv
+```
+
+- **용도**: 33개 파생 변수가 추가된 확장 데이터
+- **모델링**: 복잡한 패턴 학습이 필요한 모델
+
+### 🎯 우선순위별 특성 선택 전략
+
+#### **선택된 특성 파일**
+
+```python
+# feature_selection_analysis.py
+selected_features_final.csv
+```
+
+**우선순위별 모델링 전략**:
+
+1. **우선순위 1 (9개 특성)**: 핵심 위험 지표
+
+   - **모델**: 로지스틱 회귀, 랜덤포레스트
+   - **목적**: 해석 가능성과 안정성
+   - **사용 데이터**: `lending_club_sample_scaled_standard.csv` + 필수 특성만
+
+2. **우선순위 2 (17개 특성)**: 필수 + 중요 특성
+
+   - **모델**: XGBoost, LightGBM
+   - **목적**: 균형잡힌 성능과 해석
+   - **사용 데이터**: `lending_club_sample_with_new_features.csv` + 중요 특성
+
+3. **우선순위 3 (30개 특성)**: 모든 선택 특성
+   - **모델**: 앙상블 모델
+   - **목적**: 최대 성능 추구
+   - **사용 데이터**: `lending_club_sample_with_new_features.csv` + 모든 선택 특성
+
+### 🔧 깨끗한 모델링 데이터셋
+
+```python
+# create_clean_modeling_dataset.py
+lending_club_clean_modeling.csv
+```
+
+**특별한 용도**:
+
+- **데이터 누출 방지**: 후행지표 완전 제거
+- **실제 운영 환경**: 승인 시점 변수만 사용
+- **모든 모델링에 공통 적용**: 실제 운영 가능한 조건
+
+### 📋 모델별 최적 데이터 선택 가이드
+
+#### **로지스틱 회귀 (해석 가능성 중시)**
+
+```python
+# 사용 데이터
+lending_club_sample_scaled_standard.csv  # StandardScaler
+selected_features_priority1.csv          # 우선순위 1 특성만
+```
+
+**이유**:
+
+- 선형 모델은 StandardScaler가 최적
+- 해석 가능성을 위해 핵심 특성만 사용
+- 금융 규제 환경에서 선호
+
+#### **랜덤포레스트 (안정성 중시)**
+
+```python
+# 사용 데이터
+lending_club_sample_scaled_minmax.csv    # MinMaxScaler
+selected_features_priority1.csv          # 우선순위 1 특성만
+```
+
+**이유**:
+
+- 트리 모델은 MinMaxScaler가 적합
+- 안정성을 위해 핵심 특성만 사용
+- 과적합 방지 효과
+
+#### **XGBoost (성능 중시)**
+
+```python
+# 사용 데이터
+lending_club_sample_with_new_features.csv  # 새로운 특성 포함
+selected_features_priority2.csv            # 우선순위 2 특성
+```
+
+**이유**:
+
+- 복잡한 패턴 학습을 위해 새로운 특성 활용
+- 성능과 해석의 균형을 위해 우선순위 2 특성
+- 정규화 효과로 과적합 방지
+
+#### **LightGBM (효율성 중시)**
+
+```python
+# 사용 데이터
+lending_club_sample_with_new_features.csv  # 새로운 특성 포함
+selected_features_priority2.csv            # 우선순위 2 특성
+```
+
+**이유**:
+
+- 대용량 데이터 처리에 최적화
+- 범주형 변수 자동 처리
+- 빠른 학습을 위해 우선순위 2 특성
+
+#### **앙상블 모델 (최대 성능)**
+
+```python
+# 사용 데이터
+lending_club_sample_with_new_features.csv  # 새로운 특성 포함
+selected_features_priority3.csv            # 우선순위 3 특성
+```
+
+**이유**:
+
+- 최대 성능을 위해 모든 선택 특성 활용
+- 복잡한 패턴 학습을 위해 새로운 특성 포함
+- 앙상블 효과로 안정성 확보
+
+### 🚀 실제 구현 예시
+
+```python
+# modeling/basic_models.py에서의 활용
+def load_data_for_model(model_type, priority_level):
+    """
+    모델 타입과 우선순위에 따라 적절한 데이터 로드
+    """
+    if model_type == "logistic_regression":
+        # 선형 모델: StandardScaler + 우선순위 1
+        data = pd.read_csv("lending_club_sample_scaled_standard.csv")
+        features = get_priority_features(1)
+
+    elif model_type in ["random_forest", "xgboost", "lightgbm"]:
+        # 트리 모델: MinMaxScaler + 우선순위 2
+        data = pd.read_csv("lending_club_sample_with_new_features.csv")
+        features = get_priority_features(2)
+
+    elif model_type == "ensemble":
+        # 앙상블: 모든 특성
+        data = pd.read_csv("lending_club_sample_with_new_features.csv")
+        features = get_priority_features(3)
+
+    return data[features]
+```
+
+### 📈 성능 최적화 전략
+
+#### **메모리 효율성**
+
+- **우선순위 1**: 적은 특성으로 빠른 학습
+- **우선순위 2**: 균형잡힌 성능과 속도
+- **우선순위 3**: 최대 성능 (시간 소요)
+
+#### **해석 가능성**
+
+- **우선순위 1**: 핵심 위험 지표만으로 명확한 해석
+- **우선순위 2**: 중요 특성 추가로 세밀한 분석
+- **우선순위 3**: 복잡한 패턴 (해석 어려움)
+
+#### **실제 운영**
+
+- **깨끗한 데이터셋**: 모든 모델링에 공통 적용
+- **데이터 누출 방지**: 실제 운영 환경과 동일한 조건
+
+### 🔄 데이터 활용 워크플로우
+
+1. **데이터 준비**: `feature_engineering/` 스크립트 실행
+2. **특성 선택**: `selected_features_final.csv` 로드
+3. **모델별 데이터 선택**: 모델 타입에 따라 적절한 데이터 선택
+4. **모델 훈련**: 선택된 데이터와 특성으로 모델 훈련
+5. **성능 평가**: 모델별 성능 비교 및 최적화
+6. **최종 선택**: 다차원 평가 지표 기반 최적 모델 선택
+
 ## 📈 모델링 전략
 
 ### 1. 단계적 접근
@@ -296,6 +613,7 @@ python final_model_selection.py
 3. ✅ **하이퍼파라미터 튜닝**: Grid Search, Random Search, 최적 파라미터 도출
 4. ✅ **앙상블 모델**: 4가지 앙상블 기법 구현 및 성능 평가
 5. ✅ **최종 모델 선택**: 다차원 평가 지표 기반 종합적 모델 선택
+6. ✅ **파이프라인 시스템**: 전체 모델링 과정 자동화
 
 ## 📝 생성되는 파일
 
@@ -333,6 +651,7 @@ python final_model_selection.py
 - pickle
 - time
 - warnings
+- subprocess (파이프라인용)
 
 ## 📚 참고 자료
 
@@ -366,8 +685,9 @@ python final_model_selection.py
 - **반복 검증**: 통계적 신뢰성 확보를 위한 반복 검증 시스템 구축
 - **앙상블 모델링**: 4가지 앙상블 기법을 통한 안정적인 성능 제공
 - **최종 모델 선택**: 다차원 평가 지표 기반 객관적 모델 선택 및 자동화
+- **파이프라인 시스템**: 전체 모델링 과정 자동화 및 모니터링
 
 ---
 
 **마지막 업데이트**: 2025년 현재  
-**문서 버전**: 2.0
+**문서 버전**: 3.0
