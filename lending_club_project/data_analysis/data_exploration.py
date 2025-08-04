@@ -992,7 +992,7 @@ if __name__ == "__main__":
     print("=" * 80)
     
     # 시각화 옵션 설정 (사용자가 선택 가능)
-    CREATE_VISUALIZATIONS = True  # False로 설정하면 시각화 건너뛰기
+    CREATE_VISUALIZATIONS = False  # False로 설정하면 시각화 건너뛰기
     
     # 1단계: 데이터 로드 및 기본 분석
     print("\n1단계: 데이터 로드 및 기본 분석")

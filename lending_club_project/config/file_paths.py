@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_ANALYSIS_DIR = PROJECT_ROOT / "data_analysis"
 FEATURE_ENGINEERING_DIR = PROJECT_ROOT / "feature_engineering"
+FINAL_DIR = PROJECT_ROOT / "final"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 DOCS_DIR = PROJECT_ROOT / "docs"
 
@@ -67,6 +68,10 @@ def get_data_analysis_file_path(filename: str) -> Path:
 def get_feature_engineering_file_path(filename: str) -> Path:
     """특성 엔지니어링 파일의 전체 경로 반환"""
     return FEATURE_ENGINEERING_DIR / filename
+
+def get_final_file_path(filename: str) -> Path:
+    """최종 데이터 파일의 전체 경로 반환"""
+    return FINAL_DIR / filename
 
 def get_reports_file_path(filename: str) -> Path:
     """보고서 파일의 전체 경로 반환"""
@@ -134,6 +139,7 @@ def ensure_all_directories_exist() -> None:
         DATA_DIR,
         DATA_ANALYSIS_DIR,
         FEATURE_ENGINEERING_DIR,
+        FINAL_DIR,
         REPORTS_DIR,
         DOCS_DIR,
         DOCS_DIR / "project_docs",

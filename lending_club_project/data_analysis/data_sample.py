@@ -20,7 +20,7 @@ from config.file_paths import (
 
 def create_data_sample(input_file=None, 
                       output_file=None,
-                      sample_size=1000,
+                      sample_size=10000,
                       random_state=42):
     """
     전체 데이터셋에서 샘플을 추출하여 저장
@@ -132,7 +132,7 @@ def create_data_info_file(sample_df, output_file=None):
 
 if __name__ == "__main__":
     # 샘플 데이터 생성
-    sample_df = create_data_sample(sample_size=1000)
+    sample_df = create_data_sample(sample_size=100000)
     
     if sample_df is not None:
         # 데이터 정보 파일 생성

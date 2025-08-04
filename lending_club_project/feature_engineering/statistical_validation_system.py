@@ -20,7 +20,8 @@ from datetime import datetime
 
 # 설정
 warnings.filterwarnings('ignore')
-plt.rcParams['font.family'] = 'DejaVu Sans'
+# 한글 폰트 설정 (macOS 기준)
+plt.rcParams['font.family'] = 'AppleGothic'
 plt.rcParams['axes.unicode_minus'] = False
 
 # 파일 경로 설정
