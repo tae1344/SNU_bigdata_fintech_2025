@@ -794,6 +794,124 @@
 
 ---
 
+### Milestone 4.3: 최종 모델 선택 ✅
+
+**상태**: 완료
+
+#### 완료된 작업 내용:
+
+1. **종합적인 모델 평가 시스템 구축**
+
+   - **다차원 평가 지표**: 기계학습 성능(AUC, F1-Score) + 금융 성과(Sharpe Ratio, Portfolio Metrics) + 모델 안정성(CV, Prediction Stability)
+   - **가중치 기반 선택**: AUC Score(30%) + Sharpe Ratio(30%) + CV Mean(20%) + 예측 안정성(10%) + F1-Score(10%)
+   - **모델 다양성**: 기본 모델(4개) + 앙상블 모델(4개) = 총 8개 모델 평가
+   - **자동화된 평가**: 모델 훈련부터 성능 계산까지 완전 자동화
+
+2. **금융 성과 평가 시스템**
+
+   - **투자 시나리오 시뮬레이션**: 부도 확률 기반 대출 승인/거부 시뮬레이션
+   - **포트폴리오 지표**: Sharpe Ratio, Portfolio Return, Portfolio Risk, Default Rate
+   - **실제 운영 환경**: 승인 임계값 0.5, 투자 금액 1000달러 기준 시뮬레이션
+   - **예측 안정성**: 예측 확률의 표준편차로 모델 안정성 측정
+
+3. **종합적인 모델 비교 분석**
+
+   - **6개 차원 비교**: 종합 점수, AUC Score, Sharpe Ratio, 교차 검증 성능, 예측 안정성, 훈련 시간
+   - **시각화 시스템**: 6개 서브플롯으로 구성된 종합 비교 차트
+   - **정렬 기준**: 종합 점수 기준 내림차순 정렬
+   - **상세 분석**: 각 모델별 상세 성능 지표 및 선택 근거 문서화
+
+4. **최종 모델 선택 및 저장**
+
+   - **자동 선택**: 최고 종합 점수 모델 자동 선택
+   - **선택 기준 분석**: overall_score, auc_score, sharpe_ratio, cv_mean, prediction_stability
+   - **모델 저장**: pickle 형식으로 최종 모델 저장
+   - **선택 기준 저장**: 상세한 선택 기준 및 성능 지표 문서화
+
+5. **시각화 및 결과 저장**
+
+   - **6개 차원 시각화**: 종합 점수, AUC Score, Sharpe Ratio, 교차 검증, 예측 안정성, 훈련 시간
+   - **고해상도 저장**: 300 DPI로 시각화 저장
+   - **한글 폰트 지원**: macOS 기준 AppleGothic 폰트 적용
+   - **결과 문서화**: 상세 분석 결과 및 비교 데이터 CSV 저장
+
+#### 생성된 파일:
+
+- `modeling/final_model_selection.py`: 최종 모델 선택 시스템 핵심 클래스
+- `final/final_model.pkl`: 선택된 최종 모델
+- `final/model_selection_criteria.txt`: 선택 기준 및 성능 지표
+- `reports/final_model_selection_results.txt`: 상세 분석 결과
+- `reports/final_model_selection_comparison.csv`: 모델 비교 데이터
+- `reports/final_model_selection.png`: 6개 차원 성능 비교 시각화
+
+#### 주요 성과:
+
+- **다차원 평가**: 기계학습 성능과 금융 성과를 모두 고려한 종합적 평가
+- **자동화된 선택**: 객관적인 기준에 따른 최적 모델 자동 선택
+- **실용성**: 실제 운영 가능한 모델 선택 및 저장
+- **문서화**: 상세한 선택 기준 및 성능 분석 보고서 생성
+- **시각화**: 6개 차원의 성능 비교 시각화로 직관적 이해 제공
+
+#### 기술적 특징:
+
+**구현된 클래스**:
+
+- `FinalModelSelectionSystem`: 최종 모델 선택 시스템 핵심 클래스
+
+**주요 함수**:
+
+- `load_all_models()`: 모든 모델 로드 및 통합
+- `comprehensive_evaluation()`: 종합적인 모델 평가
+- `evaluate_financial_performance()`: 금융 성과 평가
+- `create_comprehensive_comparison()`: 종합적인 모델 비교
+- `select_final_model()`: 최종 모델 선택
+- `save_final_model()`: 최종 모델 저장
+- `create_final_visualizations()`: 시각화 생성
+- `save_final_results()`: 결과 저장
+
+**평가 지표**:
+
+- **분류 성능**: AUC Score, Precision, Recall, F1-Score
+- **금융 성과**: Sharpe Ratio, Portfolio Return, Portfolio Risk, Default Rate
+- **안정성**: 교차 검증, 예측 안정성, 훈련 시간
+- **종합 점수**: 가중 평균 기반 종합 평가
+
+#### 주요 발견사항:
+
+1. **다차원 평가의 중요성**: 단순한 분류 성능이 아닌 금융적 관점의 평가 필요성 확인
+2. **앙상블 효과**: 다양한 모델 조합을 통한 안정적인 성능 제공
+3. **자동화의 가치**: 객관적인 기준에 따른 자동 모델 선택의 효율성
+4. **실용성**: 실제 운영 가능한 모델 선택 및 저장 시스템 구축
+
+#### 모델 선택 기준:
+
+- **AUC Score (30%)**: 분류 성능의 핵심 지표
+- **Sharpe Ratio (30%)**: 금융 성과의 핵심 지표
+- **CV Mean (20%)**: 교차 검증을 통한 모델 안정성
+- **예측 안정성 (10%)**: 모델 예측의 일관성
+- **F1-Score (10%)**: 분류 정확도의 균형
+
+#### 실행 방법:
+
+```bash
+cd lending_club_project/modeling
+python final_model_selection.py
+```
+
+#### 출력 파일들:
+
+1. **`final/final_model.pkl`**: 선택된 최종 모델
+2. **`final/model_selection_criteria.txt`**: 선택 기준 및 성능 지표
+3. **`reports/final_model_selection_results.txt`**: 상세 분석 결과
+4. **`reports/final_model_selection_comparison.csv`**: 모델 비교 데이터
+5. **`reports/final_model_selection.png`**: 6개 차원 성능 비교 시각화
+
+#### 결론:
+
+이 시스템은 단순한 성능 비교를 넘어서 **금융적 관점**과 **기계학습 성능**을 모두 고려한 종합적인 모델 선택 시스템입니다. 특히 P2P 대출 환경에서 중요한 **Sharpe Ratio**와 **포트폴리오 성과**를 평가 지표에 포함시켜 실무적으로 유용한 모델 선택이 가능하도록 설계되었습니다.
+
+---
+
 ## 전체 프로젝트 진행 상황
 
 ### Phase 1: 데이터 이해 및 전처리 (1-2주) ✅
@@ -803,23 +921,23 @@
 - ✅ Milestone 1.3: 특성 엔지니어링
 - ✅ Milestone 1.4: 데이터 누출 문제 해결
 
-### Phase 2: 모델 개발 (2-3주)
+### Phase 2: 모델 개발 (2-3주) ✅
 
 - ✅ Milestone 2.1: 기본 모델 구현
 - ✅ Milestone 2.2: 모델 평가 프레임워크 구축
 - ✅ Milestone 2.3: 하이퍼파라미터 튜닝
 
-### Phase 3: 금융 모델링 (2-3주)
+### Phase 3: 금융 모델링 (2-3주) ✅
 
 - ✅ Milestone 3.1: 현금흐름 계산 시스템
 - ✅ Milestone 3.2: 투자 시나리오 시뮬레이션
 - ✅ Milestone 3.3: Sharpe Ratio 계산 (Milestone 3.2에 포함됨)
 
-### Phase 4: 모델 최적화 및 검증 (1-2주)
+### Phase 4: 모델 최적화 및 검증 (1-2주) ✅
 
 - ✅ Milestone 4.1: 반복 검증 시스템
 - ✅ Milestone 4.2: 앙상블 모델
-- ⏳ Milestone 4.3: 최종 모델 선택
+- ✅ Milestone 4.3: 최종 모델 선택
 
 ### Phase 5: 테스트 및 발표 준비 (1주)
 

@@ -33,11 +33,11 @@ Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다
 - ✅ **Milestone 3.2**: 투자 시나리오 시뮬레이션 (대출 승인/거부, 무위험자산, 복합 포트폴리오)
 - ✅ **Milestone 3.3**: Sharpe Ratio 계산 (수익률, 위험도, 최적화)
 
-#### **Phase 4: 모델 최적화 및 검증 (부분 완료)**
+#### **Phase 4: 모델 최적화 및 검증 (100% 완료)**
 
 - ✅ **Milestone 4.1**: 반복 검증 시스템 (50회 반복, Sharpe Ratio 분포 분석, 신뢰구간 계산)
-- ⏳ **Milestone 4.2**: 앙상블 모델 (진행 예정)
-- ⏳ **Milestone 4.3**: 최종 모델 선택 (진행 예정)
+- ✅ **Milestone 4.2**: 앙상블 모델 (4가지 앙상블 기법, Stacking 앙상블 최고 성능)
+- ✅ **Milestone 4.3**: 최종 모델 선택 (다차원 평가 지표, 자동화된 모델 선택, 종합 시각화)
 
 ### 🔥 최근 주요 성과
 
@@ -79,7 +79,23 @@ Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다
    - 수익률 평균 21.16%, 위험도 평균 31.35%, 부도율 평균 20.21%
    - 6가지 관점의 분포 및 관계 시각화 완료
 
-7. **체계적인 문서화**
+7. **앙상블 모델 시스템 완료**
+
+   - 4가지 앙상블 기법 구현: Voting Classifier, Stacking Classifier, 가중 평균 앙상블
+   - Stacking 앙상블 최고 성능 달성 (AUC Score 0.5491, Sharpe Ratio 0.5639)
+   - 금융 지표 기반 평가: 포트폴리오 수익률 21.56%, 위험도 32.91%, 부도율 20.00%
+   - 실제 투자 시나리오 시뮬레이션 적용으로 실무적 활용 가능
+
+8. **최종 모델 선택 시스템 완료**
+
+   - **다차원 평가 시스템**: 기계학습 성능(AUC, F1-Score) + 금융 성과(Sharpe Ratio, Portfolio Metrics) + 모델 안정성(CV, Prediction Stability)
+   - **가중치 기반 선택**: AUC Score(30%) + Sharpe Ratio(30%) + CV Mean(20%) + 예측 안정성(10%) + F1-Score(10%)
+   - **모델 다양성**: 기본 모델(4개) + 앙상블 모델(4개) = 총 8개 모델 평가
+   - **자동화된 선택**: 최고 종합 점수 모델 자동 선택 및 저장
+   - **시각화**: 6개 차원(종합 점수, AUC Score, Sharpe Ratio, 교차 검증, 예측 안정성, 훈련 시간) 성능 비교 시각화
+   - **실용성**: 실제 운영 가능한 모델 선택 및 저장 시스템 구축
+
+9. **체계적인 문서화**
    - 모든 과정에 대한 상세한 문서화 완료
    - 재현 가능한 코드 구조
 
@@ -87,23 +103,16 @@ Lending Club 데이터를 활용한 신용평가 모델링 프로젝트입니다
 
 ### 즉시 진행할 작업
 
-1. **앙상블 모델 구축 (Phase 4.2)**
-
-   - 다중 모델 앙상블 구현
-   - 가중 평균 앙상블
-   - Stacking 앙상블
-
-2. **최종 모델 선택 및 최적화 (Phase 4.3)**
-   - 성능 비교 분석
-   - 안정성 평가
-   - 최종 모델 확정
-
-### 중장기 계획
-
 1. **Phase 5: 최종 테스트 및 발표 준비**
    - 보류된 40% 데이터로 최종 검증
    - 성능 결과 정리 및 시각화
    - 보고서 및 발표 자료 작성
+
+### 중장기 계획
+
+1. **모델 배포 및 운영**
+   - 실제 운영 환경에서의 성능 모니터링
+   - 지속적인 모델 업데이트 및 개선
 
 ## 📁 프로젝트 구조
 
@@ -126,6 +135,8 @@ lending_club_project/
 │   ├── basic_models.py       # 기본 모델 구현
 │   ├── model_evaluation_framework.py  # 모델 평가 프레임워크
 │   ├── hyperparameter_tuning.py       # 하이퍼파라미터 튜닝
+│   ├── ensemble_models.py    # 앙상블 모델링 시스템
+│   ├── final_model_selection.py       # 최종 모델 선택 시스템
 │   └── credit_risk_modeling_pipeline.py  # 완전한 모델링 파이프라인
 ├── financial_modeling/       # 금융 모델링
 │   ├── cash_flow_calculator.py        # 현금흐름 계산 시스템
@@ -133,6 +144,9 @@ lending_club_project/
 │   ├── repeated_validation_system.py   # 반복 검증 시스템
 │   ├── test_cash_flow_system.py       # 현금흐름 테스트
 │   └── test_investment_scenarios.py    # 투자 시나리오 테스트
+├── final/                   # 최종 모델 및 선택 기준
+│   ├── final_model.pkl      # 선택된 최종 모델
+│   └── model_selection_criteria.txt    # 선택 기준 및 성능 지표
 ├── models/                   # 최적화된 모델 저장
 │   ├── logisticregression_tuned.pkl
 │   ├── randomforest_tuned.pkl
@@ -149,7 +163,13 @@ lending_club_project/
 │   ├── investment_scenario_results.txt           # 투자 시나리오 결과
 │   ├── investment_analysis_report.txt            # 투자 분석 보고서
 │   ├── repeated_validation_results.txt           # 반복 검증 결과
-│   └── repeated_validation_data.csv             # 반복 검증 데이터
+│   ├── repeated_validation_data.csv             # 반복 검증 데이터
+│   ├── ensemble_models_results.txt               # 앙상블 모델 결과
+│   ├── ensemble_models_comparison.csv           # 앙상블 모델 비교
+│   ├── ensemble_models_comparison.png           # 앙상블 모델 비교 시각화
+│   ├── final_model_selection_results.txt        # 최종 모델 선택 결과
+│   ├── final_model_selection_comparison.csv     # 최종 모델 선택 비교
+│   └── final_model_selection.png                # 최종 모델 선택 시각화
 └── docs/                     # 문서
     ├── project_docs/         # 프로젝트 문서
     ├── preprocessing_improvement_todos.md       # 전처리 개선사항
@@ -187,12 +207,15 @@ lending_club_project/
 - **최고 성능**: 랜덤포레스트 ROC-AUC 0.6709
 - **모델 다양성**: 4가지 서로 다른 접근법
 - **확장성**: 하이퍼파라미터 튜닝 및 앙상블 모델 구축 준비
+- **최종 모델 선택**: 다차원 평가 지표 기반 종합적 모델 선택 시스템 완료
 
 ### 금융 모델링 성과
 
 - **현금흐름 계산**: 원리금균등상환, IRR 계산, 포트폴리오 분석 완료
 - **투자 시나리오**: 8가지 투자 전략 비교, 30% 대출 비율 최적 Sharpe Ratio (1.03)
 - **반복 검증**: 50회 반복, Sharpe Ratio 0.58 ± 0.07, 수익률 21.16% ± 1.31%
+- **앙상블 모델**: 4가지 앙상블 기법, Stacking 앙상블 최고 성능 (AUC 0.5491, Sharpe Ratio 0.5639)
+- **최종 모델 선택**: 8개 모델 종합 평가, 가중치 기반 자동 선택, 6개 차원 시각화
 
 ### 프로세스 개선
 
@@ -202,6 +225,8 @@ lending_club_project/
 - **자동화**: 모델 평가 프레임워크로 재현성 및 신뢰성 향상
 - **금융 모델링**: 현실적인 투자 시나리오 시뮬레이션 및 Sharpe Ratio 최적화
 - **반복 검증**: 통계적 신뢰성 확보를 위한 반복 검증 시스템 구축
+- **앙상블 모델링**: 4가지 앙상블 기법을 통한 안정적인 성능 제공
+- **최종 모델 선택**: 다차원 평가 지표 기반 객관적 모델 선택 및 자동화
 
 ## ⚠️ 주의사항
 
@@ -231,4 +256,4 @@ lending_club_project/
 ---
 
 **마지막 업데이트**: 2025년 현재  
-**문서 버전**: 1.4
+**문서 버전**: 1.5

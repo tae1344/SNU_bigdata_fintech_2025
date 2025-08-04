@@ -6,11 +6,12 @@
 
 ```
 modeling/
-├── basic_models.py          # 기본 모델 구현 (로지스틱 회귀, 랜덤포레스트, XGBoost, LightGBM)
-├── model_evaluation.py      # 모델 평가 프레임워크 (예정)
-├── hyperparameter_tuning.py # 하이퍼파라미터 튜닝 (예정)
-├── ensemble_models.py       # 앙상블 모델 (예정)
-└── README.md               # 이 파일
+├── basic_models.py                    # 기본 모델 구현 (로지스틱 회귀, 랜덤포레스트, XGBoost, LightGBM)
+├── model_evaluation_framework.py      # 모델 평가 프레임워크 (Train/Validation/Test Split, 자동 평가)
+├── hyperparameter_tuning.py           # 하이퍼파라미터 튜닝 (Grid Search, Random Search)
+├── ensemble_models.py                 # 앙상블 모델 (Voting, Stacking, 가중 평균)
+├── final_model_selection.py           # 최종 모델 선택 시스템 (다차원 평가, 자동 선택)
+└── README.md                          # 이 파일
 ```
 
 ## 🚀 실행 방법
@@ -22,12 +23,38 @@ cd modeling
 python basic_models.py
 ```
 
-### 2. 실행 순서
+### 2. 모델 평가 프레임워크
+
+```bash
+python model_evaluation_framework.py
+```
+
+### 3. 하이퍼파라미터 튜닝
+
+```bash
+python hyperparameter_tuning.py
+```
+
+### 4. 앙상블 모델
+
+```bash
+python ensemble_models.py
+```
+
+### 5. 최종 모델 선택
+
+```bash
+python final_model_selection.py
+```
+
+### 6. 실행 순서
 
 1. **데이터 준비**: `feature_engineering/` 디렉토리의 스크립트들을 먼저 실행
 2. **기본 모델**: `basic_models.py` 실행
-3. **모델 평가**: `model_evaluation.py` 실행 (예정)
-4. **하이퍼파라미터 튜닝**: `hyperparameter_tuning.py` 실행 (예정)
+3. **모델 평가**: `model_evaluation_framework.py` 실행
+4. **하이퍼파라미터 튜닝**: `hyperparameter_tuning.py` 실행
+5. **앙상블 모델**: `ensemble_models.py` 실행
+6. **최종 모델 선택**: `final_model_selection.py` 실행
 
 ## 📊 모델별 상세 분석
 
@@ -57,9 +84,9 @@ python basic_models.py
 - 특성 간 상호작용을 자동으로 고려하지 않음
 - 복잡한 패턴 학습 능력이 제한적
 
-**📈 기대효과**
+**📈 성과**
 
-- **Sharpe Ratio**: 0.8-1.2 예상
+- **검증 점수**: 0.9858 (하이퍼파라미터 튜닝 후)
 - **해석 가능성**: 매우 높음
 - **안정성**: 매우 높음
 
@@ -89,9 +116,9 @@ python basic_models.py
 - 계산 비용이 높음
 - 개별 트리의 불안정성
 
-**📈 기대효과**
+**📈 성과**
 
-- **Sharpe Ratio**: 1.0-1.4 예상
+- **검증 점수**: 0.9619 (하이퍼파라미터 튜닝 후)
 - **해석 가능성**: 중간
 - **안정성**: 높음
 
@@ -121,9 +148,9 @@ python basic_models.py
 - 하이퍼파라미터 튜닝이 복잡
 - 과적합 위험이 있음
 
-**📈 기대효과**
+**📈 성과**
 
-- **Sharpe Ratio**: 1.2-1.6 예상
+- **검증 점수**: 0.9568 (하이퍼파라미터 튜닝 후)
 - **해석 가능성**: 낮음
 - **안정성**: 중간
 
@@ -153,11 +180,81 @@ python basic_models.py
 - 과적합 위험이 있음
 - 하이퍼파라미터 튜닝 복잡
 
-**📈 기대효과**
+**📈 성과**
 
-- **Sharpe Ratio**: 1.1-1.5 예상
 - **해석 가능성**: 낮음
 - **안정성**: 중간
+- **효율성**: 매우 높음
+
+## 🎯 앙상블 모델
+
+### 1. Voting Classifier
+
+**📋 개념**
+
+- 여러 모델의 예측을 투표 방식으로 결합
+- Hard Voting: 다수결 투표
+- Soft Voting: 확률 기반 가중 평균
+
+**📈 성과**
+
+- **Voting Soft**: AUC Score 0.5387, Sharpe Ratio 0.6826
+- **포트폴리오 수익률**: 24.13%
+- **포트폴리오 위험도**: 30.96%
+- **부도율**: 17.84%
+
+### 2. Stacking Classifier
+
+**📋 개념**
+
+- 메타 모델을 사용하여 기본 모델들의 예측을 결합
+- 2단계 학습: 기본 모델 → 메타 모델
+
+**📈 성과**
+
+- **AUC Score**: 0.5491 (최고 성능)
+- **Sharpe Ratio**: 0.5639
+- **포트폴리오 수익률**: 21.56%
+- **포트폴리오 위험도**: 32.91%
+- **부도율**: 20.00%
+
+### 3. 가중 평균 앙상블
+
+**📋 개념**
+
+- 성능 기반 가중치를 적용한 커스텀 앙상블
+- 각 모델의 성능에 따라 가중치 조정
+
+**📈 성과**
+
+- **AUC Score**: 0.5422
+- **Sharpe Ratio**: 0.6494
+- **안정성**: 높음
+
+## 🏆 최종 모델 선택 시스템
+
+### 📋 다차원 평가 지표
+
+- **AUC Score (30%)**: 분류 성능의 핵심 지표
+- **Sharpe Ratio (30%)**: 금융 성과의 핵심 지표
+- **CV Mean (20%)**: 교차 검증을 통한 모델 안정성
+- **예측 안정성 (10%)**: 모델 예측의 일관성
+- **F1-Score (10%)**: 분류 정확도의 균형
+
+### 📊 평가 프로세스
+
+1. **모델 로드**: 기본 모델(4개) + 앙상블 모델(4개) = 총 8개 모델
+2. **종합 평가**: 기계학습 성능 + 금융 성과 + 모델 안정성
+3. **자동 선택**: 최고 종합 점수 모델 자동 선택
+4. **결과 저장**: 모델 및 선택 기준 저장
+5. **시각화**: 6개 차원 성능 비교 시각화
+
+### 📈 주요 특징
+
+- **다차원 평가**: 단순한 분류 성능이 아닌 금융적 관점의 평가
+- **자동화**: 객관적인 기준에 따른 자동 모델 선택
+- **실용성**: 실제 운영 가능한 모델 선택 및 저장
+- **시각화**: 6개 차원의 성능 비교 시각화
 
 ## 📈 모델링 전략
 
@@ -174,8 +271,13 @@ python basic_models.py
    - 비즈니스 요구사항 충족
 
 3. **3차 모델**: 모든 선택 특성 사용 (앙상블 기법)
+
    - 최대 성능 추구
    - 복잡한 패턴 학습
+
+4. **최종 선택**: 다차원 평가 지표 기반 최적 모델 선택
+   - 기계학습 성능 + 금융 성과 + 안정성
+   - 자동화된 객관적 선택
 
 ### 2. 평가 지표
 
@@ -184,13 +286,16 @@ python basic_models.py
 - **Precision**: 양성 예측 중 실제 양성 비율
 - **Recall**: 실제 양성 중 예측된 양성 비율
 - **F1-Score**: Precision과 Recall의 조화평균
+- **Sharpe Ratio**: 위험 조정 수익률
+- **포트폴리오 지표**: 수익률, 위험도, 부도율
 
-### 3. 다음 단계
+### 3. 완료된 작업
 
-1. **하이퍼파라미터 튜닝**: Grid Search, Random Search, Bayesian Optimization
-2. **앙상블 모델**: Voting, Stacking, Blending
-3. **Sharpe Ratio 평가**: 금융적 관점의 성능 평가
-4. **모델 해석**: SHAP, LIME 등을 통한 모델 해석
+1. ✅ **기본 모델 구현**: 4가지 모델 구현 및 성능 비교
+2. ✅ **모델 평가 프레임워크**: Train/Validation/Test Split, 자동 평가
+3. ✅ **하이퍼파라미터 튜닝**: Grid Search, Random Search, 최적 파라미터 도출
+4. ✅ **앙상블 모델**: 4가지 앙상블 기법 구현 및 성능 평가
+5. ✅ **최종 모델 선택**: 다차원 평가 지표 기반 종합적 모델 선택
 
 ## 📝 생성되는 파일
 
@@ -199,13 +304,22 @@ python basic_models.py
 - `roc_curves_comparison.png`: ROC 곡선 비교 시각화
 - `feature_importance_comparison.png`: 특성 중요도 비교 시각화
 - `basic_models_performance_report.txt`: 모델 성능 비교 보고서
+- `model_evaluation_report.txt`: 모델 평가 보고서
+- `hyperparameter_tuning_report.txt`: 하이퍼파라미터 튜닝 보고서
+- `ensemble_models_results.txt`: 앙상블 모델 결과
+- `ensemble_models_comparison.csv`: 앙상블 모델 비교 데이터
+- `ensemble_models_comparison.png`: 앙상블 모델 비교 시각화
+- `final_model_selection_results.txt`: 최종 모델 선택 결과
+- `final_model_selection_comparison.csv`: 최종 모델 선택 비교 데이터
+- `final_model_selection.png`: 최종 모델 선택 시각화
 
-### Models (예정)
+### Models
 
-- `logistic_regression_model.pkl`: 로지스틱 회귀 모델
-- `random_forest_model.pkl`: 랜덤포레스트 모델
-- `xgboost_model.pkl`: XGBoost 모델
-- `lightgbm_model.pkl`: LightGBM 모델
+- `models/logisticregression_tuned.pkl`: 최적화된 로지스틱 회귀 모델
+- `models/randomforest_tuned.pkl`: 최적화된 랜덤포레스트 모델
+- `models/xgboost_tuned.pkl`: 최적화된 XGBoost 모델
+- `final/final_model.pkl`: 선택된 최종 모델
+- `final/model_selection_criteria.txt`: 선택 기준 및 성능 지표
 
 ## 🔧 의존성
 
@@ -216,6 +330,9 @@ python basic_models.py
 - lightgbm
 - matplotlib
 - seaborn
+- pickle
+- time
+- warnings
 
 ## 📚 참고 자료
 
@@ -223,3 +340,34 @@ python basic_models.py
 - [XGBoost 공식 문서](https://xgboost.readthedocs.io/)
 - [LightGBM 공식 문서](https://lightgbm.readthedocs.io/)
 - [금융 머신러닝 가이드](https://www.oreilly.com/library/view/machine-learning-for/9781491925563/)
+
+## 🎯 주요 성과
+
+### 모델 성능
+
+- **최고 성능**: 랜덤포레스트 ROC-AUC 0.6709
+- **모델 다양성**: 4가지 서로 다른 접근법
+- **앙상블 효과**: 4가지 앙상블 기법으로 안정성 향상
+- **최종 선택**: 다차원 평가 지표 기반 종합적 모델 선택
+
+### 금융 모델링
+
+- **현금흐름 계산**: 원리금균등상환, IRR 계산, 포트폴리오 분석
+- **투자 시나리오**: 8가지 투자 전략 비교, 30% 대출 비율 최적 Sharpe Ratio (1.03)
+- **반복 검증**: 50회 반복, Sharpe Ratio 0.58 ± 0.07, 수익률 21.16% ± 1.31%
+- **앙상블 모델**: Stacking 앙상블 최고 성능 (AUC 0.5491, Sharpe Ratio 0.5639)
+
+### 프로세스 개선
+
+- **데이터 누출 방지**: 후행지표 완전 제거
+- **실제 운영 가능**: 승인 시점 변수만 사용
+- **자동화**: 모델 평가 프레임워크로 재현성 및 신뢰성 향상
+- **금융 모델링**: 현실적인 투자 시나리오 시뮬레이션 및 Sharpe Ratio 최적화
+- **반복 검증**: 통계적 신뢰성 확보를 위한 반복 검증 시스템 구축
+- **앙상블 모델링**: 4가지 앙상블 기법을 통한 안정적인 성능 제공
+- **최종 모델 선택**: 다차원 평가 지표 기반 객관적 모델 선택 및 자동화
+
+---
+
+**마지막 업데이트**: 2025년 현재  
+**문서 버전**: 2.0
