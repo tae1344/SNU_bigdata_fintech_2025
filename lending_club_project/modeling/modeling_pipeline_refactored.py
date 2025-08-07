@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-모델링 파이프라인
-각 모델링 스크립트들을 순차적으로 실행하여 전체 모델링 과정을 자동화합니다.
+리팩토링된 모델링 파이프라인
+분리된 모델 클래스들을 사용하여 전체 모델링 과정을 자동화합니다.
 """
 
 """
-모델링 파이프라인 실행 방법
+리팩토링된 모델링 파이프라인 실행 방법
 1. 파이프라인 실행
-python modeling_pipeline.py
+python modeling_pipeline_refactored.py
 2. 특정 스크립트부터 실행
-python modeling_pipeline.py --start-from basic_models.py
+python modeling_pipeline_refactored.py --start-from basic_models_refactored.py
 """
 
 import subprocess
@@ -25,13 +25,13 @@ sys.path.append(str(project_root))
 
 warnings.filterwarnings('ignore')
 
-class ModelingPipeline:
-    """모델링 파이프라인 - 각 스크립트를 순차적으로 실행"""
+class ModelingPipelineRefactored:
+    """리팩토링된 모델링 파이프라인 - 분리된 모델 클래스들 사용"""
     
     def __init__(self):
         """초기화"""
         self.scripts = [
-            "basic_models_refactored.py",  # 리팩토링된 모델 사용
+            "basic_models_refactored.py",  # 리팩토링된 기본 모델
             "model_evaluation_framework.py", 
             "hyperparameter_tuning.py",
             "ensemble_models.py",
@@ -128,6 +128,20 @@ class ModelingPipeline:
                 print("\n먼저 feature_engineering 스크립트들을 실행해주세요.")
                 return False
             
+            # 리팩토링된 모델 클래스들 확인
+            try:
+                from models import (
+                    LogisticRegressionModel,
+                    RandomForestModel,
+                    XGBoostModel,
+                    LightGBMModel
+                )
+                print("✅ 리팩토링된 모델 클래스들 확인 완료")
+            except ImportError as e:
+                print(f"❌ 리팩토링된 모델 클래스들을 불러올 수 없습니다: {e}")
+                print("models/ 디렉토리와 파일들을 확인해주세요.")
+                return False
+            
             print("✅ 전제 조건 확인 완료")
             return True
             
@@ -139,14 +153,55 @@ class ModelingPipeline:
             print(f"❌ 전제 조건 확인 중 오류 발생: {e}")
             return False
     
+    def test_refactored_models(self):
+        """리팩토링된 모델 테스트"""
+        print("\n🧪 리팩토링된 모델 테스트 중...")
+        
+        try:
+            # 테스트 스크립트 실행
+            test_script = Path(__file__).parent / "test_refactored_models.py"
+            
+            if test_script.exists():
+                print("📋 테스트 스크립트 실행 중...")
+                result = subprocess.run(
+                    [sys.executable, str(test_script)],
+                    capture_output=True,
+                    text=True,
+                    cwd=Path(__file__).parent
+                )
+                
+                if result.returncode == 0:
+                    print("✅ 리팩토링된 모델 테스트 성공")
+                    return True
+                else:
+                    print("❌ 리팩토링된 모델 테스트 실패")
+                    if result.stderr:
+                        print("에러:", result.stderr)
+                    return False
+            else:
+                print("⚠️ 테스트 스크립트가 없습니다. 건너뜁니다.")
+                return True
+                
+        except Exception as e:
+            print(f"❌ 모델 테스트 중 오류 발생: {e}")
+            return False
+    
     def run_pipeline(self, start_from=None):
         """전체 파이프라인 실행"""
-        print("🚀 모델링 파이프라인 시작")
+        print("🚀 리팩토링된 모델링 파이프라인 시작")
         print("=" * 80)
         
         # 전제 조건 확인
         if not self.check_prerequisites():
             return False
+        
+        # 리팩토링된 모델 테스트
+        if not self.test_refactored_models():
+            print("⚠️ 리팩토링된 모델 테스트 실패. 계속 진행하시겠습니까? (y/n): ", end="")
+            response = input().lower()
+            if response != 'y':
+                print("파이프라인 중단")
+                return False
         
         # 시작 스크립트 결정
         if start_from:
@@ -185,7 +240,7 @@ class ModelingPipeline:
     def print_summary(self, successful_runs, total_runs):
         """실행 결과 요약"""
         print(f"\n{'='*80}")
-        print("📊 파이프라인 실행 결과 요약")
+        print("📊 리팩토링된 파이프라인 실행 결과 요약")
         print(f"{'='*80}")
         
         print(f"\n전체 스크립트: {total_runs}개")
@@ -202,6 +257,7 @@ class ModelingPipeline:
         if successful_runs == total_runs:
             print(f"\n🎉 모든 스크립트가 성공적으로 실행되었습니다!")
             print(f"📁 결과물은 reports/ 디렉토리에서 확인할 수 있습니다.")
+            print(f"🔄 리팩토링된 모델 구조를 사용하여 더 나은 유지보수성을 확보했습니다.")
         else:
             print(f"\n⚠️ 일부 스크립트가 실패했습니다. 로그를 확인해주세요.")
 
@@ -209,20 +265,20 @@ def main():
     """메인 함수"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='모델링 파이프라인 실행')
+    parser = argparse.ArgumentParser(description='리팩토링된 모델링 파이프라인 실행')
     parser.add_argument('--start-from', type=str, 
-                       help='시작할 스크립트 이름 (예: ensemble_models.py)')
+                       help='시작할 스크립트 이름 (예: basic_models_refactored.py)')
     
     args = parser.parse_args()
     
-    pipeline = ModelingPipeline()
+    pipeline = ModelingPipelineRefactored()
     success = pipeline.run_pipeline(start_from=args.start_from)
     
     if success:
-        print("\n✅ 파이프라인 완료!")
+        print("\n✅ 리팩토링된 파이프라인 완료!")
         sys.exit(0)
     else:
-        print("\n❌ 파이프라인 실패!")
+        print("\n❌ 리팩토링된 파이프라인 실패!")
         sys.exit(1)
 
 if __name__ == "__main__":

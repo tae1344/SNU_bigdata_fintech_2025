@@ -13,7 +13,9 @@ import warnings
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from config.file_paths import (
+    RAW_DATA_PATH,
     SAMPLE_DATA_PATH,
+    NEW_FEATURES_DATA_PATH,
     ENCODED_DATA_PATH,
     REPORTS_DIR,
     ensure_directory_exists,
@@ -44,6 +46,14 @@ def enhanced_categorical_encoding(df):
     """
     print("\n[개선된 범주형 변수 인코딩 시작]")
     print("=" * 60)
+
+    # 0. grade 순서형 인코딩(0~7) TODO :: 추후 확인 필요
+    grade_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7}
+    df['grade_numeric'] = df['grade'].map(grade_mapping)
+    df['grade_numeric'].fillna(-1, inplace=True)
+    print(f"✓ grade 순서형 인코딩 완료")
+    print(f"  매핑 범위: A(1) ~ G(7)")
+    print(f"  결측치: {df['grade_numeric'].isnull().sum()}개")
     
     # 1. sub_grade 순서형 인코딩 (A1→0, G5→34)
     print("\n1. sub_grade 순서형 인코딩")
@@ -155,8 +165,18 @@ def enhanced_categorical_encoding(df):
             'contingency_table': contingency_table
         }
     
-    # 주요 범주형 변수들에 대해 검정 수행
-    categorical_vars = ['sub_grade', 'home_ownership_cleaned', 'purpose', 'grade', 'verification_status']
+    # 주요 범주형 변수들에 대해 검정 수행 - TODO : 변수 체크 필요
+    categorical_vars = [
+        'grade',                   # 신용 등급
+        'sub_grade',               # 세부 등급
+        'home_ownership_cleaned',  # 주택 소유
+        'purpose',                 # 대출 목적
+        'verification_status',     # 소득 검증
+        'emp_length',              # 근무 기간
+        'term',                    # 대출 기간
+        'application_type'         # 신청 유형
+        # 'initial_list_status',     # 초기 상태
+    ]
     available_vars = [col for col in categorical_vars if col in df.columns]
     
     chi_square_results = {}
@@ -546,15 +566,27 @@ def optimize_state_encoding(df):
     
     return df
 
+
+
+#  """
+ 
+#  여기서 부터 원본 데이터 처리 진행!!!!!!!!!!!!!!
+ 
+#  """
+
 # 1. 데이터 로드
 try:
-    if not file_exists(SAMPLE_DATA_PATH):
-        print(f"✗ 샘플 데이터 파일이 존재하지 않습니다: {SAMPLE_DATA_PATH}")
+    # ************* 데이터 경로 설정 *************
+    DATA_PATH = NEW_FEATURES_DATA_PATH  # 원본 데이터 경로
+    # DATA_PATH = SAMPLE_DATA_PATH  # 샘플 데이터 경로
+
+    if not file_exists(DATA_PATH):
+        print(f"✗ 샘플 데이터 파일이 존재하지 않습니다: {DATA_PATH}")
         print("먼저 data_sample.py를 실행하여 샘플 데이터를 생성해주세요.")
         exit(1)
     
-    df = pd.read_csv(SAMPLE_DATA_PATH)
-    print(f"✓ 데이터 로드 완료: {SAMPLE_DATA_PATH}")
+    df = pd.read_csv(DATA_PATH)
+    print(f"✓ 데이터 로드 완료: {DATA_PATH}")
     
     # target 컬럼 생성 (loan_status 기반)
     if 'loan_status' in df.columns and 'target' not in df.columns:
@@ -575,9 +607,9 @@ try:
             'In Grace Period': 0,
             
             # 기타 상태들 (분석에서 제외)
-            'Issued': -1,
-            'Does not meet the credit policy. Status:Fully Paid': -1,
-            'Does not meet the credit policy. Status:Charged Off': -1
+            'Issued': 1,
+            'Does not meet the credit policy. Status:Fully Paid': 0,
+            'Does not meet the credit policy. Status:Charged Off': 1
         }
         
         # target 변수 생성
@@ -595,7 +627,16 @@ try:
                 status = "기타/미분류"
             print(f"  {status}({target_val}): {count:,}개")
         
-        # 부도율 계산
+        # -1 값을 가진 행들 제거 (분석에서 제외할 상태들)
+        original_rows = len(df)
+        df = df[df['target'] != -1]
+        removed_rows = original_rows - len(df)
+        
+        if removed_rows > 0:
+            print(f"  제거된 행: {removed_rows:,}개 (분석에서 제외할 상태)")
+            print(f"  남은 행: {len(df):,}개")
+        
+        # 부도율 계산 (제거 후)
         default_rate = (df['target'] == 1).mean()
         print(f"  전체 부도율: {default_rate:.3f} ({default_rate*100:.1f}%)")
         
@@ -617,17 +658,44 @@ print("\n[주(state) 데이터 최적화 적용]")
 # 주 데이터 최적화 함수 적용
 df = optimize_state_encoding(df)
 
+
+
+# """
+
+# ======= 여기까지 체크 완료함!!!!!!!! ================================
+
+# """
+
 # 3. 기존 인코딩 방식과 통합
 print("\n[기존 인코딩 방식과 통합]")
 
 # 주요 범주형 변수 지정 (개선된 특성 제외)
 categorical_cols = [
-    'home_ownership', 'purpose', 'grade', 'verification_status', 
-    'application_type', 'initial_list_status', 'term'
+    # 'home_ownership_cleaned',  # cleaned 버전 사용
+    'verification_status', 
+    'application_type', 
+    'initial_list_status'
+    # 'purpose', 
+    # 'grade' 제거: 이미 grade_numeric으로 순서형 인코딩됨
+    # 'term' 제거: 이미 term_months로 수치화됨 (확인 필요)
+    # 'emp_length' 제거: 이미 emp_length_numeric으로 수치화됨
+    # 'sub_grade' 제거: 이미 sub_grade_ordinal로 순서형 인코딩됨
+    # 'addr_state' 제거: 이미 addr_state_optimized로 최적화됨
 ]
 
 # 실제 데이터에 존재하는 컬럼만 사용
 categorical_cols = [col for col in categorical_cols if col in df.columns]
+
+# 원본 변수들도 확인 (cleaned 버전이 없는 경우)
+original_categorical_cols = [
+    'home_ownership', 'purpose', 'verification_status', 
+    'application_type', 'initial_list_status'
+]
+
+# cleaned 버전이 없는 경우 원본 사용
+for col in original_categorical_cols:
+    if col not in categorical_cols and col in df.columns:
+        categorical_cols.append(col)
 
 # 고유값 개수 확인
 print("\n[범주형 변수 고유값 개수]")
@@ -636,7 +704,7 @@ for col in categorical_cols:
 
 # 인코딩 방식 선택 및 적용
 # (1) 원핫 인코딩: 고유값이 적은 변수
-onehot_cols = [col for col in categorical_cols if df[col].nunique() <= 10]
+onehot_cols = [col for col in categorical_cols if df[col].nunique() <= 5]
 # (2) 라벨 인코딩: 순서형 또는 고유값이 많은 변수
 label_cols = [col for col in categorical_cols if col not in onehot_cols]
 
@@ -651,9 +719,76 @@ for col in label_cols:
     df[col] = le.fit_transform(df[col].astype(str))
     print(f"✓ 라벨 인코딩 적용: {col}")
 
+# 3.5. 원본 변수 제거 (처리된 변수들) - 선택적
+print("\n[원본 변수 제거]")
+print("-" * 40)
+
+# 원본 변수 제거 여부 설정 (True: 제거, False: 유지)
+REMOVE_ORIGINAL_VARS = False  # 필요에 따라 False로 변경 가능
+
+if REMOVE_ORIGINAL_VARS:
+    # 제거할 원본 변수들 (이미 처리된 변수들)
+    remove_columns = []
+    if 'grade_numeric' in df.columns and 'grade' in df.columns:
+        remove_columns.append('grade')
+        print(f"  ✓ 'grade' 제거 (grade_numeric 사용)")
+    
+    if 'sub_grade_ordinal' in df.columns and 'sub_grade' in df.columns:
+        remove_columns.append('sub_grade')
+        print(f"  ✓ 'sub_grade' 제거 (sub_grade_ordinal 사용)")
+    
+    if 'emp_length_numeric' in df.columns and 'emp_length' in df.columns:
+        remove_columns.append('emp_length')
+        print(f"  ✓ 'emp_length' 제거 (emp_length_numeric 사용)")
+    
+    if 'home_ownership_cleaned' in df.columns and 'home_ownership' in df.columns:
+        remove_columns.append('home_ownership')
+        print(f"  ✓ 'home_ownership' 제거 (home_ownership_cleaned 사용)")
+    
+    if 'addr_state_optimized' in df.columns and 'addr_state' in df.columns:
+        remove_columns.append('addr_state')
+        print(f"  ✓ 'addr_state' 제거 (addr_state_optimized 사용)")
+    
+    # 제거 실행
+    if remove_columns:
+        df = df.drop(columns=remove_columns)
+        print(f"  총 {len(remove_columns)}개 원본 변수 제거 완료")
+    else:
+        print("  제거할 원본 변수가 없습니다.")
+else:
+    print("  원본 변수 제거를 건너뜁니다. (REMOVE_ORIGINAL_VARS = False)")
+    print("  원본 변수들이 유지됩니다.")
+
 # 4. 결과 확인
 print(f"\n최종 데이터셋 shape: {df.shape}")
 print(f"컬럼 예시: {list(df.columns[:15])} ...")
+
+# 변수 상태 확인 및 리포트
+print("\n[변수 상태 확인]")
+print("-" * 40)
+
+# 원본-처리된 변수 쌍 정의
+variable_pairs = [
+    ('grade', 'grade_numeric'),
+    ('sub_grade', 'sub_grade_ordinal'),
+    ('emp_length', 'emp_length_numeric'),
+    ('home_ownership', 'home_ownership_cleaned'),
+    ('addr_state', 'addr_state_optimized')
+]
+
+print("변수 처리 상태:")
+for original, processed in variable_pairs:
+    original_exists = original in df.columns
+    processed_exists = processed in df.columns
+    
+    if original_exists and processed_exists:
+        print(f"  {original} ✓ + {processed} ✓ (중복)")
+    elif processed_exists:
+        print(f"  {original} ✗ + {processed} ✓ (처리됨)")
+    elif original_exists:
+        print(f"  {original} ✓ + {processed} ✗ (원본만)")
+    else:
+        print(f"  {original} ✗ + {processed} ✗ (둘 다 없음)")
 
 # 생성된 새로운 특성 확인
 new_features = [col for col in df.columns if any(x in col for x in ['ordinal', 'numeric', 'cleaned', 'is_na', 'optimized'])]
@@ -662,9 +797,29 @@ if new_features:
     for feature in new_features:
         print(f"  - {feature}")
 
+
+# """
+
+# ======= TODO :: 5번 과정이 필요한지 체크!!!!!!!! ================================
+
+# """
+
 # 5. 통계적 검증 시스템 적용
 print("\n[통계적 검증 시스템 적용]")
 print("=" * 50)
+
+# target 변수 검증
+if 'target' in df.columns:
+    print("target 변수 검증:")
+    print(f"  NaN 값: {df['target'].isnull().sum()}개")
+    print(f"  고유값: {df['target'].unique()}")
+    print(f"  데이터 타입: {df['target'].dtype}")
+    
+    # NaN 값이 있으면 제거
+    if df['target'].isnull().sum() > 0:
+        print(f"  ⚠️ NaN 값 제거 중...")
+        df = df.dropna(subset=['target'])
+        print(f"  ✓ NaN 값 제거 완료")
 
 # 통계적 검증 시스템 임포트 및 실행
 from statistical_validation_system import StatisticalValidationSystem

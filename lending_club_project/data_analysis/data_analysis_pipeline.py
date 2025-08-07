@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-모델링 파이프라인
-각 모델링 스크립트들을 순차적으로 실행하여 전체 모델링 과정을 자동화합니다.
+데이터 분석 파이프라인
+각 데이터 분석 스크립트들을 순차적으로 실행하여 전체 분석 과정을 자동화합니다.
 """
 
 """
-모델링 파이프라인 실행 방법
-1. 파이프라인 실행
-python modeling_pipeline.py
+데이터 분석 파이프라인 실행 방법
+1. 전체 파이프라인 실행
+python data_analysis_pipeline.py
 2. 특정 스크립트부터 실행
-python modeling_pipeline.py --start-from basic_models.py
+python data_analysis_pipeline.py --start-from data_exploration.py
 """
 
 import subprocess
@@ -25,17 +25,16 @@ sys.path.append(str(project_root))
 
 warnings.filterwarnings('ignore')
 
-class ModelingPipeline:
-    """모델링 파이프라인 - 각 스크립트를 순차적으로 실행"""
+class DataAnalysisPipeline:
+    """데이터 분석 파이프라인 - 각 분석 스크립트를 순차적으로 실행"""
     
     def __init__(self):
         """초기화"""
         self.scripts = [
-            "basic_models_refactored.py",  # 리팩토링된 모델 사용
-            "model_evaluation_framework.py", 
-            "hyperparameter_tuning.py",
-            "ensemble_models.py",
-            "final_model_selection.py"
+            "data_sample.py",
+            "data_exploration.py",
+            "target_variable_definition.py",
+            "add_priority_to_features.py"
         ]
         self.results = {}
         
@@ -100,20 +99,11 @@ class ModelingPipeline:
         print("🔍 전제 조건 확인 중...")
         
         try:
-            # feature_engineering 결과물 확인
-            from config.file_paths import (
-                SCALED_STANDARD_DATA_PATH,
-                SCALED_MINMAX_DATA_PATH,
-                NEW_FEATURES_DATA_PATH,
-                SELECTED_FEATURES_PATH,
-                file_exists
-            )
+            # 원본 데이터 파일 확인
+            from config.file_paths import SAMPLE_DATA_PATH, file_exists
             
             required_files = [
-                SCALED_STANDARD_DATA_PATH,
-                SCALED_MINMAX_DATA_PATH, 
-                NEW_FEATURES_DATA_PATH,
-                SELECTED_FEATURES_PATH
+                SAMPLE_DATA_PATH
             ]
             
             missing_files = []
@@ -122,10 +112,10 @@ class ModelingPipeline:
                     missing_files.append(file_path)
             
             if missing_files:
-                print("❌ 필수 전처리 파일들이 없습니다:")
+                print("❌ 필수 데이터 파일들이 없습니다:")
                 for file_path in missing_files:
                     print(f"  - {file_path}")
-                print("\n먼저 feature_engineering 스크립트들을 실행해주세요.")
+                print("\n먼저 data/ 디렉토리에 원본 데이터를 준비해주세요.")
                 return False
             
             print("✅ 전제 조건 확인 완료")
@@ -141,7 +131,7 @@ class ModelingPipeline:
     
     def run_pipeline(self, start_from=None):
         """전체 파이프라인 실행"""
-        print("🚀 모델링 파이프라인 시작")
+        print("🚀 데이터 분석 파이프라인 시작")
         print("=" * 80)
         
         # 전제 조건 확인
@@ -201,7 +191,8 @@ class ModelingPipeline:
         
         if successful_runs == total_runs:
             print(f"\n🎉 모든 스크립트가 성공적으로 실행되었습니다!")
-            print(f"📁 결과물은 reports/ 디렉토리에서 확인할 수 있습니다.")
+            print(f"📁 분석 결과는 data_analysis/ 디렉토리에서 확인할 수 있습니다.")
+            print(f"📁 특성 선택 결과는 selected_features_final.csv에서 확인할 수 있습니다.")
         else:
             print(f"\n⚠️ 일부 스크립트가 실패했습니다. 로그를 확인해주세요.")
 
@@ -209,20 +200,20 @@ def main():
     """메인 함수"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='모델링 파이프라인 실행')
+    parser = argparse.ArgumentParser(description='데이터 분석 파이프라인 실행')
     parser.add_argument('--start-from', type=str, 
-                       help='시작할 스크립트 이름 (예: ensemble_models.py)')
+                       help='시작할 스크립트 이름 (예: data_exploration.py)')
     
     args = parser.parse_args()
     
-    pipeline = ModelingPipeline()
+    pipeline = DataAnalysisPipeline()
     success = pipeline.run_pipeline(start_from=args.start_from)
     
     if success:
-        print("\n✅ 파이프라인 완료!")
+        print("\n✅ 데이터 분석 파이프라인 완료!")
         sys.exit(0)
     else:
-        print("\n❌ 파이프라인 실패!")
+        print("\n❌ 데이터 분석 파이프라인 실패!")
         sys.exit(1)
 
 if __name__ == "__main__":

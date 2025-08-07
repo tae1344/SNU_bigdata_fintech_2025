@@ -19,6 +19,10 @@ from config.file_paths import (
     get_reports_file_path
 )
 
+# 한글 폰트 설정 (macOS 기준)
+plt.rcParams['font.family'] = 'AppleGothic'
+plt.rcParams['axes.unicode_minus'] = False
+
 def analyze_posterior_variables(df):
     """후행지표 변수들을 분석합니다."""
     print("=" * 80)

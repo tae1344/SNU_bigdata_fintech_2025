@@ -14,7 +14,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 DATA_ANALYSIS_DIR = PROJECT_ROOT / "data_analysis"
 FEATURE_ENGINEERING_DIR = PROJECT_ROOT / "feature_engineering"
 FINAL_DIR = PROJECT_ROOT / "final"
-REPORTS_DIR = PROJECT_ROOT / "reports"
+REPORTS_DIR = PROJECT_ROOT / "reports-final" # TODO: 추후 변경 필요
 DOCS_DIR = PROJECT_ROOT / "docs"
 
 # 데이터 파일
@@ -23,6 +23,7 @@ SAMPLE_DATA_FILE = "lending_club_sample.csv"
 
 # 전처리된 데이터 파일
 ENCODED_DATA_FILE = "lending_club_sample_encoded.csv"
+CLEANED_DATA_FILE = "lending_club_sample_cleaned.csv"
 SCALED_STANDARD_DATA_FILE = "lending_club_sample_scaled_standard.csv"
 SCALED_MINMAX_DATA_FILE = "lending_club_sample_scaled_minmax.csv"
 NEW_FEATURES_DATA_FILE = "lending_club_sample_with_new_features.csv"
@@ -104,6 +105,7 @@ BASIC_MODELS_REPORT_PATH = get_reports_file_path(BASIC_MODELS_REPORT_FILE)
 MODEL_EVALUATION_REPORT_PATH = get_reports_file_path(MODEL_EVALUATION_REPORT_FILE)
 
 ENCODED_DATA_PATH = get_feature_engineering_file_path(ENCODED_DATA_FILE)
+CLEANED_DATA_PATH = get_feature_engineering_file_path(CLEANED_DATA_FILE)
 SCALED_STANDARD_DATA_PATH = get_feature_engineering_file_path(SCALED_STANDARD_DATA_FILE)
 SCALED_MINMAX_DATA_PATH = get_feature_engineering_file_path(SCALED_MINMAX_DATA_FILE)
 NEW_FEATURES_DATA_PATH = get_feature_engineering_file_path(NEW_FEATURES_DATA_FILE)

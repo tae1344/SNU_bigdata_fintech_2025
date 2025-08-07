@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-모델링 파이프라인
-각 모델링 스크립트들을 순차적으로 실행하여 전체 모델링 과정을 자동화합니다.
+특성 엔지니어링 파이프라인
+각 전처리 스크립트들을 순차적으로 실행하여 전체 전처리 과정을 자동화합니다.
 """
 
 """
-모델링 파이프라인 실행 방법
-1. 파이프라인 실행
-python modeling_pipeline.py
+특성 엔지니어링 파이프라인 실행 방법
+1. 전체 파이프라인 실행
+python feature_engineering_pipeline.py
 2. 특정 스크립트부터 실행
-python modeling_pipeline.py --start-from basic_models.py
+python feature_engineering_pipeline.py --start-from feature_engineering_step2_scaling.py
 """
 
 import subprocess
@@ -25,17 +25,19 @@ sys.path.append(str(project_root))
 
 warnings.filterwarnings('ignore')
 
-class ModelingPipeline:
-    """모델링 파이프라인 - 각 스크립트를 순차적으로 실행"""
+class FeatureEngineeringPipeline:
+    """특성 엔지니어링 파이프라인 - 각 전처리 스크립트를 순차적으로 실행"""
     
     def __init__(self):
         """초기화"""
         self.scripts = [
-            "basic_models_refactored.py",  # 리팩토링된 모델 사용
-            "model_evaluation_framework.py", 
-            "hyperparameter_tuning.py",
-            "ensemble_models.py",
-            "final_model_selection.py"
+            "data_cleaning.py",                    # 데이터 정제 (결측치, 이상치 처리), 결과 :RAW_DATA_PATH -> CLEANED_DATA_PATH
+            "feature_engineering_step3_new_features.py",  # 새 특성 생성을 먼저, 결과 : CLEANED_DATA_PATH -> NEW_FEATURES_DATA_PATH
+            "feature_engineering_step1_encoding.py", # 결과: NEW_FEATURES_DATA_PATH -> ENCODED_DATA_PATH
+            "scaling.py",                          # 스케일링을 나중에, 결과 : ENCODED_DATA_PATH -> SCALED_STANDARD_DATA_PATH, SCALED_MINMAX_DATA_PATH
+            # "feature_selection_analysis.py",
+            # "create_clean_modeling_dataset.py",
+            # "integrated_preprocessing_pipeline.py" # 필요한지 체크
         ]
         self.results = {}
         
@@ -100,20 +102,11 @@ class ModelingPipeline:
         print("🔍 전제 조건 확인 중...")
         
         try:
-            # feature_engineering 결과물 확인
-            from config.file_paths import (
-                SCALED_STANDARD_DATA_PATH,
-                SCALED_MINMAX_DATA_PATH,
-                NEW_FEATURES_DATA_PATH,
-                SELECTED_FEATURES_PATH,
-                file_exists
-            )
+            # 원본 데이터 파일 확인
+            from config.file_paths import SAMPLE_DATA_PATH, file_exists
             
             required_files = [
-                SCALED_STANDARD_DATA_PATH,
-                SCALED_MINMAX_DATA_PATH, 
-                NEW_FEATURES_DATA_PATH,
-                SELECTED_FEATURES_PATH
+                SAMPLE_DATA_PATH
             ]
             
             missing_files = []
@@ -122,10 +115,10 @@ class ModelingPipeline:
                     missing_files.append(file_path)
             
             if missing_files:
-                print("❌ 필수 전처리 파일들이 없습니다:")
+                print("❌ 필수 데이터 파일들이 없습니다:")
                 for file_path in missing_files:
                     print(f"  - {file_path}")
-                print("\n먼저 feature_engineering 스크립트들을 실행해주세요.")
+                print("\n먼저 data/ 디렉토리에 원본 데이터를 준비해주세요.")
                 return False
             
             print("✅ 전제 조건 확인 완료")
@@ -141,7 +134,7 @@ class ModelingPipeline:
     
     def run_pipeline(self, start_from=None):
         """전체 파이프라인 실행"""
-        print("🚀 모델링 파이프라인 시작")
+        print("🚀 특성 엔지니어링 파이프라인 시작")
         print("=" * 80)
         
         # 전제 조건 확인
@@ -201,7 +194,8 @@ class ModelingPipeline:
         
         if successful_runs == total_runs:
             print(f"\n🎉 모든 스크립트가 성공적으로 실행되었습니다!")
-            print(f"📁 결과물은 reports/ 디렉토리에서 확인할 수 있습니다.")
+            print(f"📁 전처리된 데이터는 feature_engineering/ 디렉토리에서 확인할 수 있습니다.")
+            print(f"📁 특성 선택 결과는 data_analysis/ 디렉토리에서 확인할 수 있습니다.")
         else:
             print(f"\n⚠️ 일부 스크립트가 실패했습니다. 로그를 확인해주세요.")
 
@@ -209,20 +203,20 @@ def main():
     """메인 함수"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='모델링 파이프라인 실행')
+    parser = argparse.ArgumentParser(description='특성 엔지니어링 파이프라인 실행')
     parser.add_argument('--start-from', type=str, 
-                       help='시작할 스크립트 이름 (예: ensemble_models.py)')
+                       help='시작할 스크립트 이름 (예: feature_engineering_step2_scaling.py)')
     
     args = parser.parse_args()
     
-    pipeline = ModelingPipeline()
+    pipeline = FeatureEngineeringPipeline()
     success = pipeline.run_pipeline(start_from=args.start_from)
     
     if success:
-        print("\n✅ 파이프라인 완료!")
+        print("\n✅ 특성 엔지니어링 파이프라인 완료!")
         sys.exit(0)
     else:
-        print("\n❌ 파이프라인 실패!")
+        print("\n❌ 특성 엔지니어링 파이프라인 실패!")
         sys.exit(1)
 
 if __name__ == "__main__":
