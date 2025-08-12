@@ -273,6 +273,13 @@ class StatisticalValidationSystem:
             X_numerical = self.df[numerical_features].fillna(0)  # 결측치를 0으로 대체
             y = self.df[self.target_col]
             
+            # NaN 값이 있는 행 제거
+            # valid_mask = ~(X_numerical.isnull().any(axis=1) | y.isnull())
+            # if not valid_mask.all():
+            #     print(f"    ⚠️ NaN 값이 있는 {(~valid_mask).sum()}개 행 제거")
+            #     X_numerical = X_numerical[valid_mask]
+            #     y = y[valid_mask]
+            
             mi_scores = mutual_info_classif(X_numerical, y, random_state=42)
             
             for feature, mi_score in zip(numerical_features, mi_scores):
@@ -294,6 +301,13 @@ class StatisticalValidationSystem:
             
             X_categorical = X_categorical.fillna(-1)  # 결측치를 -1로 대체
             y = self.df[self.target_col]
+            
+            # NaN 값이 있는 행 제거
+            # valid_mask = ~(X_categorical.isnull().any(axis=1) | y.isnull())
+            # if not valid_mask.all():
+            #     print(f"    ⚠️ NaN 값이 있는 {(~valid_mask).sum()}개 행 제거")
+            #     X_categorical = X_categorical[valid_mask]
+            #     y = y[valid_mask]
             
             mi_scores = mutual_info_classif(X_categorical, y, random_state=42)
             
