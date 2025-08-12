@@ -4,6 +4,7 @@ XGBoost 모델 클래스
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from .base_model import BaseModel
 
 # XGBoost 사용 가능 여부 확인
@@ -19,7 +20,7 @@ class XGBoostModel(BaseModel):
     
     def __init__(self, random_state=42, **kwargs):
         super().__init__(random_state)
-        
+        self.model_name = "xgboost"  # 모델 이름 설정
         if not XGBOOST_AVAILABLE:
             raise ImportError("XGBoost가 설치되지 않았습니다. 'pip install xgboost'로 설치해주세요.")
         
@@ -28,9 +29,8 @@ class XGBoostModel(BaseModel):
             'max_depth': 6,
             'learning_rate': 0.1,
             'random_state': self.random_state,
-            'scale_pos_weight': 6.62,  # 클래스 불균형 비율
-            'eval_metric': 'auc',
-            'use_label_encoder': False,
+            'scale_pos_weight': 1,  # 클래스 불균형 처리
+            'n_jobs': -1,
             **kwargs
         }
     

@@ -16,6 +16,7 @@ import warnings
 import sys
 import os
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 # 프로젝트 루트 경로 추가
 project_root = Path(__file__).parent.parent
@@ -32,6 +33,11 @@ from financial_modeling.cash_flow_calculator import (
 )
 
 warnings.filterwarnings('ignore')
+
+
+# 한글 폰트 설정 (macOS 기준)
+plt.rcParams['font.family'] = 'AppleGothic'
+plt.rcParams['axes.unicode_minus'] = False
 
 
 class InvestmentScenarioSimulator:
@@ -193,6 +199,12 @@ class InvestmentScenarioSimulator:
         num_months = len(monthly_returns)
         annual_return_rate = ((total_value / investment_amount) ** (12 / num_months)) - 1
         
+        # 월별 수익률 리스트 추출 (Sharpe ratio 계산용)
+        monthly_return_rates = [row['monthly_rate'] for row in monthly_returns]
+        
+        # Sharpe ratio 계산 (월별 수익률 사용)
+        sharpe_ratio = calculate_sharpe_ratio(monthly_return_rates, 0.03, 'monthly')
+        
         return {
             'investment_amount': investment_amount,
             'total_value': total_value,
@@ -200,6 +212,7 @@ class InvestmentScenarioSimulator:
             'total_return_rate': total_return_rate,
             'annual_return_rate': annual_return_rate,
             'monthly_returns': monthly_returns,
+            'sharpe_ratio': sharpe_ratio,
             'term': term,
             'start_date': start_date,
             'end_date': end_date
@@ -256,21 +269,26 @@ class InvestmentScenarioSimulator:
     def _calculate_combined_portfolio_metrics(self, loan_scenario: Dict, 
                                            treasury_scenario: Dict,
                                            total_investment: float) -> Dict:
-        """복합 포트폴리오 지표 계산"""
+        """복합 포트폴리오 지표 계산 (연율화된 버전)"""
         
         # 대출 포트폴리오 수익률
         loan_return = 0
         loan_investment = 0
+        loan_risk = 0
         if loan_scenario.get('portfolio_metrics'):
             loan_return = loan_scenario['portfolio_metrics'].get('portfolio_return', 0)
             loan_investment = loan_scenario['total_investment']
+            loan_risk = loan_scenario['portfolio_metrics'].get('portfolio_risk', 0)
         
         # 미국채 포트폴리오 수익률
         treasury_return = 0
         treasury_investment = 0
+        treasury_risk = 0
         if treasury_scenario:
-            treasury_return = treasury_scenario.get('total_return_rate', 0)
+            treasury_return = treasury_scenario.get('annual_return_rate', 0)
             treasury_investment = treasury_scenario.get('investment_amount', 0)
+            # 미국채 위험도는 매우 낮음 (연 1-2%)
+            treasury_risk = 0.015  # 1.5% 연 위험도
         
         # 가중 평균 수익률 계산
         if loan_investment + treasury_investment > 0:
@@ -278,18 +296,18 @@ class InvestmentScenarioSimulator:
         else:
             combined_return = 0
         
-        # 포트폴리오 위험도 계산 (간단한 가중 평균)
-        loan_risk = loan_scenario.get('portfolio_metrics', {}).get('portfolio_risk', 0)
-        treasury_risk = 0.02  # 미국채 위험도 (낮음)
-        
+        # 포트폴리오 위험도 계산 (가중 평균)
         if loan_investment + treasury_investment > 0:
             combined_risk = (loan_risk * loan_investment + treasury_risk * treasury_investment) / (loan_investment + treasury_investment)
         else:
             combined_risk = 0
         
-        # Sharpe Ratio 계산
+        # Sharpe Ratio 계산 (연율화된 버전)
         risk_free_rate = 0.03  # 기본 무위험수익률
-        sharpe_ratio = (combined_return - risk_free_rate) / combined_risk if combined_risk > 0 else 0
+        if combined_risk > 0:
+            sharpe_ratio = (combined_return - risk_free_rate) / combined_risk
+        else:
+            sharpe_ratio = 0
         
         return {
             'combined_return': combined_return,
@@ -298,7 +316,8 @@ class InvestmentScenarioSimulator:
             'loan_return': loan_return,
             'treasury_return': treasury_return,
             'loan_investment': loan_investment,
-            'treasury_investment': treasury_investment
+            'treasury_investment': treasury_investment,
+            'risk_free_rate': risk_free_rate
         }
     
     def compare_investment_strategies(self, loan_data: pd.DataFrame,
@@ -321,12 +340,16 @@ class InvestmentScenarioSimulator:
         print("전략 1: 100% 미국채 투자")
         treasury_scenario = self.simulate_treasury_investment_scenario(total_investment)
         if treasury_scenario:
+            treasury_return = treasury_scenario['annual_return_rate']
+            treasury_risk = 0.015  # 미국채 연 위험도 1.5%
+            treasury_sharpe = treasury_scenario.get('sharpe_ratio', 0)
+            
             strategies.append({
                 'strategy': '100% 미국채',
                 'return_rate': treasury_scenario['total_return_rate'],
                 'annual_return': treasury_scenario['annual_return_rate'],
-                'risk': 0.02,
-                'sharpe_ratio': (treasury_scenario['total_return_rate'] - 0.03) / 0.02
+                'risk': treasury_risk,
+                'sharpe_ratio': treasury_sharpe
             })
         
         # 2. 다양한 대출 승인 임계값
@@ -419,7 +442,6 @@ def create_investment_visualizations(simulator: InvestmentScenarioSimulator,
     strategies_df = simulator.compare_investment_strategies(loan_data)
     
     # 2. 시각화
-    import matplotlib.pyplot as plt
     
     plt.figure(figsize=(15, 10))
     

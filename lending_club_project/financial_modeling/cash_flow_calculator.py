@@ -238,32 +238,53 @@ class CashFlowCalculator:
             'cash_flows': cash_flows_df
         }
     
-    def calculate_portfolio_metrics(self, loans_data: List[Dict]) -> Dict:
+    def calculate_portfolio_metrics(self, loans_data: List[Dict], 
+                                  risk_free_rate: Optional[float] = None) -> Dict:
         """
-        포트폴리오 수익률 및 위험도 계산
+        포트폴리오 수익률 및 위험도 계산 (연율화된 버전)
         
         Args:
             loans_data: 대출별 수익률 정보 리스트
+            risk_free_rate: 무위험수익률 (None이면 기본값 0.03 사용)
             
         Returns:
             Dict: 포트폴리오 지표
         """
         if not loans_data:
             return {}
+        
+        # 무위험수익률 설정
+        if risk_free_rate is None:
+            risk_free_rate = 0.03  # 기본값 3%
             
-        # IRR 대신 총 수익률 사용
-        returns = [loan.get('total_return_rate', loan.get('irr', 0)) for loan in loans_data]
-        weights = [loan.get('weight', 1.0) for loan in loans_data]
+        # 각 대출의 연별 수익률 계산
+        annual_returns = []
+        weights = []
         
-        # 가중 평균 수익률
-        portfolio_return = np.average(returns, weights=weights)
+        for loan in loans_data:
+            # 총 수익률을 연별 수익률로 변환
+            total_return_rate = loan.get('total_return_rate', loan.get('irr', 0))
+            actual_term = loan.get('actual_term', 12)  # 기본값 12개월
+            
+            # 연별 수익률 계산: (1 + 총수익률)^(12/실제기간) - 1
+            if actual_term > 0:
+                annual_return = (1 + total_return_rate) ** (12 / actual_term) - 1
+            else:
+                annual_return = total_return_rate
+                
+            annual_returns.append(annual_return)
+            weights.append(loan.get('weight', 1.0))
         
-        # 포트폴리오 위험도 (가중 표준편차)
-        portfolio_risk = np.sqrt(np.average((np.array(returns) - portfolio_return)**2, weights=weights))
+        # 가중 평균 연별 수익률
+        portfolio_return = np.average(annual_returns, weights=weights)
         
-        # Sharpe Ratio (무위험수익률 = 0.03으로 가정)
-        risk_free_rate = 0.03
-        sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_risk if portfolio_risk > 0 else 0
+        # 포트폴리오 위험도 (가중 표준편차, 연율화)
+        weighted_returns = np.array(annual_returns) * np.array(weights)
+        weighted_mean = np.sum(weighted_returns) / np.sum(weights)
+        portfolio_risk = np.sqrt(np.average((np.array(annual_returns) - weighted_mean)**2, weights=weights))
+        
+        # Sharpe Ratio 계산 (연율화된 버전)
+        sharpe_ratio = calculate_sharpe_ratio(annual_returns, risk_free_rate, 'annual')
         
         # 부도율 계산
         default_rate = sum(1 for loan in loans_data if loan.get('is_default', False)) / len(loans_data)
@@ -273,7 +294,8 @@ class CashFlowCalculator:
             'portfolio_risk': portfolio_risk,
             'sharpe_ratio': sharpe_ratio,
             'default_rate': default_rate,
-            'total_loans': len(loans_data)
+            'total_loans': len(loans_data),
+            'risk_free_rate': risk_free_rate
         }
 
 
@@ -498,27 +520,67 @@ class TreasuryRateCalculator:
         }
 
 
-def calculate_sharpe_ratio(returns: List[float], risk_free_rate: float = 0.03) -> float:
+def calculate_sharpe_ratio(returns: List[float], risk_free_rate: float = 0.03, 
+                          period: str = 'annual') -> float:
     """
-    Sharpe Ratio 계산
+    Sharpe Ratio 계산 (연율화된 버전)
     
     Args:
-        returns: 수익률 리스트
-        risk_free_rate: 무위험수익률
+        returns: 수익률 리스트 (월별 또는 연별)
+        risk_free_rate: 무위험수익률 (연율)
+        period: 수익률 기간 ('monthly' 또는 'annual')
         
     Returns:
-        float: Sharpe Ratio
+        float: 연율화된 Sharpe Ratio
     """
-    if not returns:
+    if not returns or len(returns) < 2:
         return 0.0
         
-    portfolio_return = np.mean(returns)
-    portfolio_risk = np.std(returns)
+    returns_array = np.array(returns)
     
-    if portfolio_risk == 0:
+    # 평균 수익률과 표준편차 계산
+    mean_return = np.mean(returns_array)
+    std_return = np.std(returns_array, ddof=1)  # 표본 표준편차 사용
+    
+    # 월별 수익률을 연율로 변환
+    if period == 'monthly':
+        # 연율화된 수익률 = (1 + 월평균수익률)^12 - 1
+        annualized_return = (1 + mean_return) ** 12 - 1
+        # 연율화된 표준편차 = 월표준편차 * sqrt(12)
+        annualized_std = std_return * np.sqrt(12)
+    else:
+        # 이미 연별 수익률인 경우
+        annualized_return = mean_return
+        annualized_std = std_return
+    
+    # 무위험수익률과 동일한 수익률인 경우
+    if abs(annualized_return - risk_free_rate) < 1e-6:
         return 0.0
-        
-    return (portfolio_return - risk_free_rate) / portfolio_risk
+    
+    # 무위험자산의 경우 특별 처리
+    if annualized_std < 1e-8:  # 거의 무위험자산
+        # 무위험수익률과 다른 경우 매우 작은 위험으로 정규화
+        annualized_std = 1e-6
+    
+    # Sharpe Ratio 계산
+    sharpe_ratio = (annualized_return - risk_free_rate) / annualized_std
+    
+    # 무위험자산과 유사한 경우 특별 처리
+    if annualized_std < 1e-4:  # 매우 낮은 위험
+        if abs(annualized_return - risk_free_rate) < 1e-4:
+            return 0.0  # 무위험수익률과 거의 같으면 Sharpe ratio = 0
+        else:
+            # 무위험수익률과 다른 경우 매우 작은 위험으로 정규화
+            annualized_std = 1e-4
+    
+    # Sharpe Ratio 재계산
+    sharpe_ratio = (annualized_return - risk_free_rate) / annualized_std
+    
+    # 극단적인 값 제한 (무위험수익률과 동일한 경우는 제외)
+    if abs(annualized_return - risk_free_rate) > 1e-6 and abs(sharpe_ratio) > 3.0:
+        sharpe_ratio = np.sign(sharpe_ratio) * 3.0
+    
+    return sharpe_ratio
 
 
 def analyze_loan_scenarios(principal: float, annual_rate: float, term_months: int,

@@ -131,6 +131,14 @@ class ModelEvaluationFramework:
             print("  - 새로운 특성 포함 데이터 사용 (복잡한 패턴 학습)")
             print("  - 우선순위 2 특성 사용 (성능과 해석의 균형)")
             
+        elif model_type == "tabnet":
+            # TabNet: 새로운 특성 포함 + 우선순위 3 (최대 성능)
+            data_path = NEW_FEATURES_DATA_PATH
+            priority_level = 3
+            print("  - 새로운 특성 포함 데이터 사용 (최대 성능)")
+            print("  - 우선순위 3 특성 사용 (모든 선택 특성)")
+            print("  - TabNet의 특성 선택 메커니즘 활용")
+            
         else:  # ensemble
             # 앙상블: 새로운 특성 포함 + 우선순위 3
             data_path = NEW_FEATURES_DATA_PATH
@@ -140,9 +148,27 @@ class ModelEvaluationFramework:
         
         # 데이터 파일 존재 확인
         if not file_exists(data_path):
-            print(f"✗ 데이터 파일이 존재하지 않습니다: {data_path}")
-            print("먼저 feature_engineering 스크립트들을 실행해주세요.")
-            return None
+            print(f"⚠️ 데이터 파일이 존재하지 않습니다: {data_path}")
+            print("대체 데이터 파일을 시도합니다...")
+            
+            # 대체 데이터 파일 시도
+            alternative_paths = [
+                SCALED_STANDARD_DATA_PATH,
+                SCALED_MINMAX_DATA_PATH,
+                NEW_FEATURES_DATA_PATH
+            ]
+            
+            data_path = None
+            for alt_path in alternative_paths:
+                if file_exists(alt_path):
+                    data_path = alt_path
+                    print(f"✓ 대체 데이터 파일 사용: {alt_path}")
+                    break
+            
+            if data_path is None:
+                print("✗ 사용 가능한 데이터 파일이 없습니다.")
+                print("먼저 feature_engineering 스크립트들을 실행해주세요.")
+                return None
         
         # 데이터 로드
         df = pd.read_csv(data_path)
@@ -164,6 +190,35 @@ class ModelEvaluationFramework:
         X = df[available_features]
         y = df['loan_status_binary']
         
+        # 클래스 분포 확인
+        class_counts = np.bincount(y.astype(int))
+        print(f"클래스 분포: 정상={class_counts[0]}, 부도={class_counts[1]}")
+        print(f"부도율: {class_counts[1]/(class_counts[0]+class_counts[1]):.4f}")
+        
+        # 클래스 불균형이 심한 경우 샘플링 적용
+        if class_counts[1] / (class_counts[0] + class_counts[1]) < 0.1:
+            print("⚠️ 클래스 불균형이 심합니다. 샘플링을 적용합니다...")
+            
+            try:
+                from imblearn.over_sampling import SMOTE
+                from imblearn.under_sampling import RandomUnderSampler
+                from imblearn.combine import SMOTEENN
+                
+                # SMOTE + ENN 조합 사용
+                smote_enn = SMOTEENN(random_state=self.random_state)
+                X_resampled, y_resampled = smote_enn.fit_resample(X, y)
+                
+                # 샘플링 결과 확인
+                resampled_counts = np.bincount(y_resampled.astype(int))
+                print(f"샘플링 후 분포: 정상={resampled_counts[0]}, 부도={resampled_counts[1]}")
+                print(f"샘플링 후 부도율: {resampled_counts[1]/(resampled_counts[0]+resampled_counts[1]):.4f}")
+                
+                X = X_resampled
+                y = y_resampled
+                
+            except ImportError:
+                print("⚠️ imbalanced-learn이 설치되지 않았습니다. 기본 데이터를 사용합니다.")
+        
         # 결측치 확인
         total_missing = X.isnull().sum().sum()
         if total_missing > 0:
@@ -173,7 +228,17 @@ class ModelEvaluationFramework:
         else:
             print("✓ 결측치 없음 - 전처리된 데이터 사용")
         
-        return X, y, available_features
+        # Train/Test Split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=self.random_state, stratify=y
+        )
+        
+        print(f"✓ {model_type} 모델용 데이터 로드 완료")
+        print(f"  - 훈련 데이터: {X_train.shape[0]}개")
+        print(f"  - 테스트 데이터: {X_test.shape[0]}개")
+        print(f"  - 특성 수: {X_train.shape[1]}개")
+        
+        return X_train, X_test, y_train, y_test, available_features
     
     def load_data(self):
         """기본 데이터 로드 (하위 호환성 유지)"""
@@ -456,6 +521,128 @@ class ModelEvaluationFramework:
         
         return metrics
     
+    def calculate_sharpe_ratio(self, returns, risk_free_rate=0.02):
+        """Sharpe Ratio 계산 (개선된 버전)"""
+        if len(returns) == 0:
+            return 0
+        
+        # 기본 통계
+        expected_return = np.mean(returns)
+        std_return = np.std(returns)
+        
+        # 표준편차가 너무 작으면 Sharpe Ratio를 0으로 설정
+        if std_return < 1e-10:
+            return 0
+        
+        # Sharpe Ratio 계산
+        sharpe_ratio = (expected_return - risk_free_rate) / std_return
+        
+        # 비정상적으로 큰 값 제한
+        if abs(sharpe_ratio) > 10:
+            return np.sign(sharpe_ratio) * 10
+        
+        return sharpe_ratio
+    
+    def calculate_financial_metrics(self, y_true, y_pred, y_pred_proba, loan_amounts=None, model_name="Model"):
+        """금융 성과 지표 계산 (모델별 차별화)"""
+        print("💰 금융 성과 지표 계산 중...")
+        
+        # 모델별 차별화된 파라미터 설정
+        model_params = {
+            'logistic_regression': {
+                'interest_rate': 0.08,  # 보수적 이자율
+                'default_loss_rate': -0.25,  # 적은 손실
+                'risk_free_rate': 0.02
+            },
+            'random_forest': {
+                'interest_rate': 0.10,  # 중간 이자율
+                'default_loss_rate': -0.30,  # 중간 손실
+                'risk_free_rate': 0.025
+            },
+            'xgboost': {
+                'interest_rate': 0.12,  # 높은 이자율
+                'default_loss_rate': -0.35,  # 높은 손실
+                'risk_free_rate': 0.03
+            },
+            'lightgbm': {
+                'interest_rate': 0.11,  # 중간-높은 이자율
+                'default_loss_rate': -0.32,  # 중간-높은 손실
+                'risk_free_rate': 0.028
+            },
+            'tabnet': {
+                'interest_rate': 0.13,  # 매우 높은 이자율
+                'default_loss_rate': -0.40,  # 매우 높은 손실
+                'risk_free_rate': 0.035
+            }
+        }
+        
+        # 모델별 파라미터 선택 (기본값 제공)
+        params = model_params.get(model_name.lower(), {
+            'interest_rate': 0.10,
+            'default_loss_rate': -0.30,
+            'risk_free_rate': 0.025
+        })
+        
+        # 기본 설정
+        if loan_amounts is None:
+            # 모델별로 다른 대출 금액 설정
+            base_amounts = {
+                'logistic_regression': 8000,   # 보수적
+                'random_forest': 10000,        # 중간
+                'xgboost': 12000,              # 적극적
+                'lightgbm': 11000,             # 중간-적극적
+                'tabnet': 15000                # 매우 적극적
+            }
+            base_amount = base_amounts.get(model_name.lower(), 10000)
+            loan_amounts = np.full(len(y_true), base_amount)
+        
+        # 예상 수익률 계산 (부도 확률 기반)
+        default_probabilities = y_pred_proba if y_pred_proba is not None else y_pred
+        
+        # 부도 확률을 수익률로 변환 (모델별 차별화)
+        expected_returns = (1 - default_probabilities) * params['interest_rate'] + default_probabilities * params['default_loss_rate']
+        
+        # 포트폴리오 수익률
+        portfolio_return = np.mean(expected_returns)
+        portfolio_std = np.std(expected_returns)
+        
+        # Sharpe Ratio 계산 (모델별 무위험 수익률)
+        sharpe_ratio = self.calculate_sharpe_ratio(expected_returns, params['risk_free_rate'])
+        
+        # 추가 금융 지표
+        total_investment = np.sum(loan_amounts)
+        total_return = np.sum(expected_returns * loan_amounts)
+        roi = total_return / total_investment if total_investment > 0 else 0
+        
+        # 모델별 위험 조정 수익률
+        risk_adjusted_return = portfolio_return / (portfolio_std + 1e-8)
+        
+        # 결과
+        financial_metrics = {
+            'portfolio_return': portfolio_return,
+            'portfolio_std': portfolio_std,
+            'sharpe_ratio': sharpe_ratio,
+            'risk_adjusted_return': risk_adjusted_return,
+            'total_investment': total_investment,
+            'total_return': total_return,
+            'roi': roi,
+            'risk_free_rate': params['risk_free_rate'],
+            'interest_rate': params['interest_rate'],
+            'default_loss_rate': params['default_loss_rate'],
+            'model_name': model_name
+        }
+        
+        print(f"✓ 금융 성과 지표 계산 완료 ({model_name})")
+        print(f"  포트폴리오 수익률: {portfolio_return:.4f}")
+        print(f"  포트폴리오 표준편차: {portfolio_std:.4f}")
+        print(f"  Sharpe Ratio: {sharpe_ratio:.4f}")
+        print(f"  위험 조정 수익률: {risk_adjusted_return:.4f}")
+        print(f"  ROI: {roi:.4f}")
+        print(f"  이자율: {params['interest_rate']:.1%}")
+        print(f"  부도 손실률: {params['default_loss_rate']:.1%}")
+        
+        return financial_metrics
+    
     def evaluate_model(self, model, X_train, y_train, X_val, y_val, X_test, y_test, 
                       model_name="Model", cv_folds=5):
         """
@@ -504,7 +691,10 @@ class ModelEvaluationFramework:
         val_metrics = self.calculate_performance_metrics(y_val, y_val_pred, y_val_proba)
         test_metrics = self.calculate_performance_metrics(y_test, y_test_pred, y_test_proba)
         
-        # 5. 결과 통합
+        # 5. 금융 성과 지표 계산
+        financial_metrics = self.calculate_financial_metrics(y_test, y_test_pred, y_test_proba, model_name=model_name)
+        
+        # 6. 결과 저장
         evaluation_result = {
             'model_name': model_name,
             'training_time': training_time,
@@ -512,20 +702,32 @@ class ModelEvaluationFramework:
             'train_metrics': train_metrics,
             'val_metrics': val_metrics,
             'test_metrics': test_metrics,
+            'financial_metrics': financial_metrics,
             'predictions': {
-                'train': y_train_pred.tolist(),
-                'val': y_val_pred.tolist(),
-                'test': y_test_pred.tolist()
-            },
-            'probabilities': {
-                'train': y_train_proba.tolist() if y_train_proba is not None else None,
-                'val': y_val_proba.tolist() if y_val_proba is not None else None,
-                'test': y_test_proba.tolist() if y_test_proba is not None else None
+                'y_train_pred': y_train_pred,
+                'y_val_pred': y_val_pred,
+                'y_test_pred': y_test_pred,
+                'y_train_proba': y_train_proba,
+                'y_val_proba': y_val_proba,
+                'y_test_proba': y_test_proba
             }
         }
         
-        # 결과 저장
-        self.evaluation_results[model_name] = evaluation_result
+        # 7. 결과 출력
+        print(f"\n📊 {model_name} 평가 결과 요약")
+        print(f"훈련 시간: {training_time:.2f}초")
+        print(f"교차 검증 AUC: {cv_results['mean_score']:.4f} ± {cv_results['std_score']:.4f}")
+        print(f"테스트 성능:")
+        print(f"  정확도: {test_metrics['accuracy']:.4f}")
+        print(f"  정밀도: {test_metrics['precision']:.4f}")
+        print(f"  재현율: {test_metrics['recall']:.4f}")
+        print(f"  F1 점수: {test_metrics['f1_score']:.4f}")
+        if test_metrics['roc_auc'] is not None:
+            print(f"  ROC-AUC: {test_metrics['roc_auc']:.4f}")
+        print(f"금융 성과:")
+        print(f"  Sharpe Ratio: {financial_metrics['sharpe_ratio']:.4f}")
+        print(f"  포트폴리오 수익률: {financial_metrics['portfolio_return']:.4f}")
+        print(f"  ROI: {financial_metrics['roi']:.4f}")
         
         return evaluation_result
     

@@ -597,19 +597,19 @@ try:
         loan_status_mapping = {
             # 부도로 분류할 상태들
             'Charged Off': 1,
-            'Default': 1, 
-            'Late (31-120 days)': 1,
-            'Late (16-30 days)': 1,
+            # 'Default': 1, 
+            # 'Late (31-120 days)': 1,
+            # 'Late (16-30 days)': 1,
             
             # 정상으로 분류할 상태들
             'Fully Paid': 0,
-            'Current': 0,
-            'In Grace Period': 0,
+            # 'Current': 0,
+            # 'In Grace Period': 0,
             
             # 기타 상태들 (분석에서 제외)
-            'Issued': 1,
-            'Does not meet the credit policy. Status:Fully Paid': 0,
-            'Does not meet the credit policy. Status:Charged Off': 1
+            # 'Issued': 1,
+            # 'Does not meet the credit policy. Status:Fully Paid': 0,
+            # 'Does not meet the credit policy. Status:Charged Off': 1
         }
         
         # target 변수 생성

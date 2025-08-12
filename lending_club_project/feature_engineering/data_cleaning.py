@@ -18,6 +18,7 @@ sys.path.append(str(project_root))
 
 from config.file_paths import (
     RAW_DATA_PATH,
+    TEST_DATA_PATH,
     CLEANED_DATA_PATH,
     REPORTS_DIR,
     ensure_directory_exists,
@@ -422,6 +423,7 @@ def main():
 
     # ************* 데이터 경로 설정 *************
     DATA_PATH = RAW_DATA_PATH  # 원본 데이터 경로
+    # DATA_PATH = TEST_DATA_PATH  # 원본 데이터 경로
     
     if not file_exists(DATA_PATH):
         print(f"❌ 인코딩된 데이터 파일이 없습니다: {DATA_PATH}")

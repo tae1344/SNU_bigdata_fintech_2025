@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, roc_auc_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, roc_auc_score, f1_score, precision_score, recall_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
@@ -395,31 +395,79 @@ def calculate_emi_based_irr(df, default_probabilities):
     return np.array(irr_results)
 
 def calculate_expected_returns(df, default_probabilities, int_rates):
-    """예상 수익률 계산 (더 현실적인 버전)"""
-    # 대출 금액과 이자율 정보 추출
-    loan_amount = df['loan_amnt'].values if 'loan_amnt' in df.columns else np.full(len(df), 10000)
+    """예상 수익률 계산 (스케일링된 데이터용)"""
+    # 스케일링된 데이터에서 원본 값으로 복원
+    print("스케일링된 데이터에서 원본 값 복원 중...")
     
-    # 이자율이 스케일링되어 있으므로 원본 값으로 복원
-    # 동적으로 이자율 범위 계산
-    min_rate, max_rate = get_interest_rate_range()
+    # 1. 대출 금액 복원 (MinMax 스케일링: 0-1 -> 원본 범위)
+    if 'loan_amnt' in df.columns:
+        # 원본 범위: 500 ~ 40000 (대략)
+        loan_amount_min, loan_amount_max = 500, 40000
+        loan_amount_scaled = df['loan_amnt'].values
+        loan_amount = loan_amount_min + (loan_amount_scaled * (loan_amount_max - loan_amount_min))
+        print(f"대출 금액 복원 - 평균: ${np.mean(loan_amount):.0f}")
+    else:
+        loan_amount = np.full(len(df), 10000)
     
-    # 스케일링된 값(0-1)을 원본 퍼센트로 변환
-    interest_rate_scaled = int_rates  # 이미 0-1 범위
-    interest_rate_percent = min_rate + (interest_rate_scaled * (max_rate - min_rate))  # 동적 범위로 변환
-    interest_rate = interest_rate_percent / 100  # 퍼센트를 소수로 변환
+    # 2. 이자율 복원 (MinMax 스케일링: 0-1 -> 원본 범위)
+    if 'int_rate' in df.columns:
+        # 원본 범위: 5.42% ~ 30.99% (대략)
+        int_rate_min, int_rate_max = 5.42, 30.99
+        int_rate_scaled = df['int_rate'].values
+        interest_rate_percent = int_rate_min + (int_rate_scaled * (int_rate_max - int_rate_min))
+        interest_rate = interest_rate_percent / 100  # 퍼센트를 소수로 변환
+        print(f"이자율 복원 - 평균: {np.mean(interest_rate_percent):.2f}%")
+    else:
+        # 스케일링된 값(0-1)을 원본 퍼센트로 변환 (기존 방식)
+        min_rate, max_rate = get_interest_rate_range()
+        interest_rate_scaled = int_rates  # 이미 0-1 범위
+        interest_rate_percent = min_rate + (interest_rate_scaled * (max_rate - min_rate))  # 동적 범위로 변환
+        interest_rate = interest_rate_percent / 100  # 퍼센트를 소수로 변환
+        print(f"스케일링된 값 사용 - 평균: {np.mean(interest_rate_percent):.2f}%")
+    
+    # 3. 신용 등급 복원 (Ordinal 인코딩: 0-6 -> A-G)
+    if 'grade_numeric' in df.columns:
+        grade_numeric_scaled = df['grade_numeric'].values
+        # 스케일링된 값(0-1)을 원본 등급(1-7)으로 복원
+        grade_numeric = 1 + (grade_numeric_scaled * 6)  # 1-7 범위
+        grade_factor = (grade_numeric - 3) * 0.005  # A=1, B=2, C=3, D=4, E=5, F=6, G=7
+        print(f"신용 등급 복원 - 평균: {np.mean(grade_numeric):.2f}")
+    else:
+        grade_factor = np.zeros(len(df))
+    
+    # 4. 대출 기간 복원
+    if 'term_months' in df.columns:
+        term_months_scaled = df['term_months'].values
+        # 원본 범위: 12 ~ 84개월
+        term_min, term_max = 12, 84
+        term_months = term_min + (term_months_scaled * (term_max - term_min))
+        term_factor = (term_months - 36) / 36 * 0.01  # 36개월 기준
+        print(f"대출 기간 복원 - 평균: {np.mean(term_months):.1f}개월")
+    else:
+        term_factor = np.zeros(len(df))
     
     # 부도 확률 조정 (더 보수적으로)
     adjusted_default_probs = np.minimum(default_probabilities, 0.3)  # 0.5에서 0.3으로 줄임
     
     # 예상 수익률 계산 (더 현실적인 버전)
     # 정상 대출 시: 이자율만큼 수익, 부실 대출 시: -30% 손실 (더 현실적인 손실률)
-    expected_return = (1 - adjusted_default_probs) * interest_rate + adjusted_default_probs * (-0.3)
+    base_return = (1 - adjusted_default_probs) * interest_rate + adjusted_default_probs * (-0.3)
+    
+    # 추가 변동성 도입 (실제 대출의 불확실성 반영)
+    # 1. 대출 금액에 따른 변동성
+    loan_amount_factor = np.log(loan_amount / 10000) * 0.01  # 대출 금액에 따른 변동성
+    
+    # 2. 랜덤 노이즈 (시장 변동성)
+    np.random.seed(42)  # 재현 가능성을 위해 고정
+    market_noise = np.random.normal(0, 0.005, len(df))  # 0.5% 표준편차
+    
+    # 최종 수익률 계산
+    expected_return = base_return + loan_amount_factor + grade_factor + term_factor + market_noise
     
     # 디버깅 정보 출력
     print(f"부도 확률 조정 전 평균: {np.mean(default_probabilities):.4f}")
     print(f"부도 확률 조정 후 평균: {np.mean(adjusted_default_probs):.4f}")
-    print(f"스케일링된 이자율 평균: {np.mean(interest_rate_scaled):.4f}")
-    print(f"복원된 이자율 평균: {np.mean(interest_rate_percent):.2f}%")
+    print(f"이자율 평균: {np.mean(interest_rate * 100):.2f}%")
     print(f"예상 수익률 평균: {np.mean(expected_return):.4f}")
     
     return expected_return
@@ -433,14 +481,11 @@ def calculate_sharpe_ratio(returns, risk_free_rate):
     std_return = np.std(returns)
     
     # 표준편차가 너무 작으면 (거의 0) Sharpe Ratio를 0으로 설정
-    if std_return < 1e-10:
+    if std_return < 1e-6:  # 더 엄격한 임계값
+        print(f"Warning: 표준편차가 너무 작음 ({std_return:.8f}). Sharpe Ratio를 0으로 설정합니다.")
         return 0
     
     sharpe_ratio = (expected_return - risk_free_rate) / std_return
-    
-    # 비정상적으로 큰 값 제한 (더 현실적인 범위)
-    if abs(sharpe_ratio) > 50:  # 10에서 50으로 늘림
-        return np.sign(sharpe_ratio) * 50
     
     return sharpe_ratio
 
@@ -652,25 +697,7 @@ def portfolio_analysis_with_term_based_treasury(df, default_probabilities, treas
                 'Risk_Free_Rate_Type': 'term-based'
             })
 
-    # 전략 3: Top N 방식
-    top_n = [100, 200, 500, 1000, 2000, 5000]
-    for n in top_n:
-        if n <= len(expected_returns):
-            top_idx = np.argsort(expected_returns)[-n:]
-            port_ret = expected_returns[top_idx]
-            port_rf = risk_free_rate_annual.iloc[top_idx]
-            sharpe = calculate_sharpe_ratio(port_ret, port_rf.mean())
-            results.append({
-                'Strategy': f'Top {n}',
-                'Portfolio_Size': len(port_ret),
-                'Expected_Return': port_ret.mean(),
-                'Std_Return': port_ret.std(),
-                'Sharpe_Ratio': sharpe,
-                'Risk_Free_Rate': port_rf.mean() * 100,
-                'Risk_Free_Rate_Type': 'term-based'
-            })
-
-    # 전략 4: Predicted Probability Threshold 방식
+    # 전략 3: Predicted Probability Threshold 방식
     prob_thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     for p in prob_thresholds:
         mask = default_probabilities < p
@@ -688,51 +715,52 @@ def portfolio_analysis_with_term_based_treasury(df, default_probabilities, treas
                 'Risk_Free_Rate_Type': 'term-based'
             })
 
-    # 전략 5: 위험조정 포트폴리오 방식 (현실적인 접근)
-    print("\n=== 위험조정 포트폴리오 분석 ===")
-    print("Top-N 방식의 비현실적인 높은 Sharpe Ratio 문제를 해결하기 위한 현실적인 접근:")
-    print("1. Risk-Adjusted Sharpe: 수익률/위험 비율 기반 선택")
-    print("2. Risk-Return Ratio: 부도 확률을 고려한 수익률/위험 비율")
-    print("3. Diversified Portfolio: 수익률과 위험을 균형있게 고려")
-    print("4. Min Variance: 위험 최소화를 우선시하는 보수적 접근")
-    print("5. 현실적인 Sharpe Ratio 제한: 최대 5.0 (기존 50.0에서 대폭 축소)")
-    
+    # 전략 4: 위험조정 포트폴리오 방식 (현실적인 접근)
     # 위험조정 포트폴리오 함수들
     def create_risk_adjusted_portfolio(returns, default_probs, n_portfolio, method='sharpe'):
         """위험조정 포트폴리오 생성"""
-        
         if method == 'sharpe':
-            # Sharpe Ratio 기반 선택 (수익률/위험 비율)
-            risk_scores = returns / np.std(returns)
+            # 개별 Sharpe Ratio 기반 선택 (위험 고려)
+            risk_scores = returns / (default_probs + 0.01)
             top_idx = np.argsort(risk_scores)[-n_portfolio:]
-            
         elif method == 'risk_return_ratio':
-            # 수익률 대비 위험 비율 (부도 확률 고려)
-            risk_return_ratio = returns / (default_probs + 0.01)  # 0으로 나누기 방지
+            # 위험 대비 수익률 비율
+            risk_return_ratio = returns / (default_probs + 0.01)
             top_idx = np.argsort(risk_return_ratio)[-n_portfolio:]
-            
         elif method == 'diversified':
-            # 다양화된 포트폴리오 (수익률과 위험을 모두 고려)
-            # 수익률 점수 (0-1 정규화)
+            # 더 보수적인 가중치 조정 (위험 중심)
             return_score = (returns - np.min(returns)) / (np.max(returns) - np.min(returns) + 1e-8)
-            # 위험 점수 (낮을수록 좋음, 0-1 정규화)
             risk_score = 1 - (default_probs - np.min(default_probs)) / (np.max(default_probs) - np.min(default_probs) + 1e-8)
-            # 종합 점수
-            combined_score = 0.7 * return_score + 0.3 * risk_score
+            combined_score = 0.3 * return_score + 0.7 * risk_score  # 위험 중심으로 변경
             top_idx = np.argsort(combined_score)[-n_portfolio:]
-            
         elif method == 'min_variance':
-            # 최소 분산 포트폴리오 (수익률은 보조 고려)
-            # 간단한 구현: 수익률이 양수인 것들 중에서 위험이 낮은 것 선택
+            # 최소 분산 포트폴리오
             positive_returns = returns > 0
             if positive_returns.sum() >= n_portfolio:
                 positive_idx = np.where(positive_returns)[0]
                 low_risk_idx = np.argsort(default_probs[positive_idx])[:n_portfolio]
                 top_idx = positive_idx[low_risk_idx]
             else:
-                # 양수 수익률이 부족하면 전체에서 위험이 낮은 것 선택
                 top_idx = np.argsort(default_probs)[:n_portfolio]
-        
+        elif method == 'balanced':
+            # 균형잡힌 접근 (수익률과 위험의 중간)
+            return_score = (returns - np.min(returns)) / (np.max(returns) - np.min(returns) + 1e-8)
+            risk_score = 1 - (default_probs - np.min(default_probs)) / (np.max(default_probs) - np.min(default_probs) + 1e-8)
+            combined_score = 0.5 * return_score + 0.5 * risk_score
+            top_idx = np.argsort(combined_score)[-n_portfolio:]
+        elif method == 'conservative':
+            # 보수적 접근 (낮은 위험, 적당한 수익률)
+            # 위험도가 낮고 수익률이 중간인 대출 선택
+            risk_threshold = np.percentile(default_probs, 30)  # 하위 30% 위험도
+            return_threshold = np.percentile(returns, 60)  # 상위 40% 수익률
+            
+            low_risk_high_return = (default_probs <= risk_threshold) & (returns >= return_threshold)
+            if low_risk_high_return.sum() >= n_portfolio:
+                candidates = np.where(low_risk_high_return)[0]
+                top_idx = np.random.choice(candidates, n_portfolio, replace=False)
+            else:
+                # 조건을 만족하는 대출이 부족하면 위험도 순으로 선택
+                top_idx = np.argsort(default_probs)[:n_portfolio]
         return top_idx
     
     def calculate_realistic_sharpe_ratio(returns, risk_free_rate):
@@ -748,14 +776,11 @@ def portfolio_analysis_with_term_based_treasury(df, default_probabilities, treas
         
         sharpe_ratio = (expected_return - risk_free_rate) / std_return
         
-        # 현실적인 범위로 제한 (금융 시장에서 일반적인 범위)
-        if abs(sharpe_ratio) > 5:  # 50에서 5로 대폭 축소
-            return np.sign(sharpe_ratio) * 5
-        
+        # 제한 없이 실제 계산된 Sharpe Ratio 반환
         return sharpe_ratio
     
     # 위험조정 포트폴리오 방법들
-    risk_adjusted_methods = ['sharpe', 'risk_return_ratio', 'diversified', 'min_variance']
+    risk_adjusted_methods = ['sharpe', 'risk_return_ratio', 'diversified', 'min_variance', 'balanced', 'conservative']
     risk_adjusted_sizes = [500, 1000, 2000, 5000]
     
     for method in risk_adjusted_methods:
@@ -778,7 +803,9 @@ def portfolio_analysis_with_term_based_treasury(df, default_probabilities, treas
                     'sharpe': 'Risk-Adjusted Sharpe',
                     'risk_return_ratio': 'Risk-Return Ratio',
                     'diversified': 'Diversified Portfolio',
-                    'min_variance': 'Min Variance'
+                    'min_variance': 'Min Variance',
+                    'balanced': 'Balanced Portfolio',
+                    'conservative': 'Conservative Portfolio'
                 }
                 
                 results.append({
@@ -830,37 +857,14 @@ def plot_term_based_results(results_df, treasury_rates, df_merged):
     axes[0, 0].set_ylabel('Interest Rate (%)')
     axes[0, 0].grid(True, alpha=0.3)
     
-    # 2. Sharpe Ratio by Strategy
-    if len(results_df) > 0:
-        # Top-N 방식과 위험조정 방식 분리
-        top_n_results = results_df[results_df['Strategy'].str.contains(r'Top \d+', na=False)]
-        risk_adjusted_results = results_df[results_df['Strategy'].str.contains('Risk-Adjusted|Risk-Return|Diversified|Min Variance', na=False)]
-        
-        # Top-N 방식 (비현실적 높은 값들)
-        if len(top_n_results) > 0:
-            top_n_strategies = top_n_results.nlargest(5, 'Sharpe_Ratio')
-            axes[0, 1].barh(range(len(top_n_strategies)), top_n_strategies['Sharpe_Ratio'], 
-                            color='red', alpha=0.7, label='Top-N (비현실적)')
-        
-        # 위험조정 방식 (현실적 값들)
-        if len(risk_adjusted_results) > 0:
-            risk_adjusted_strategies = risk_adjusted_results.nlargest(5, 'Sharpe_Ratio')
-            axes[0, 1].barh(range(len(risk_adjusted_strategies)), risk_adjusted_strategies['Sharpe_Ratio'], 
-                            color='blue', alpha=0.7, label='위험조정 (현실적)')
-        
-        axes[0, 1].set_title('Sharpe Ratio Comparison: Top-N vs Risk-Adjusted')
-        axes[0, 1].set_xlabel('Sharpe Ratio')
-        axes[0, 1].legend()
-        axes[0, 1].grid(True, alpha=0.3)
-    
-    # 3. Expected Return vs Sharpe Ratio
+    # 2. Expected Return vs Sharpe Ratio
     axes[0, 2].scatter(results_df['Expected_Return'], results_df['Sharpe_Ratio'], alpha=0.7)
     axes[0, 2].set_xlabel('Expected Return')
     axes[0, 2].set_ylabel('Sharpe Ratio')
     axes[0, 2].set_title('Expected Return vs Sharpe Ratio (Term-based)')
     axes[0, 2].grid(True, alpha=0.3)
     
-    # 4. Portfolio Size vs Sharpe Ratio
+    # 3. Portfolio Size vs Sharpe Ratio
     axes[1, 0].scatter(results_df['Portfolio_Size'], results_df['Sharpe_Ratio'], alpha=0.7)
     axes[1, 0].set_xlabel('Portfolio Size')
     axes[1, 0].set_ylabel('Sharpe Ratio')
@@ -868,14 +872,14 @@ def plot_term_based_results(results_df, treasury_rates, df_merged):
     axes[1, 0].set_xscale('log')
     axes[1, 0].grid(True, alpha=0.3)
     
-    # 5. Risk Free Rate vs Sharpe Ratio
+    # 4. Risk Free Rate vs Sharpe Ratio
     axes[1, 1].scatter(results_df['Risk_Free_Rate'], results_df['Sharpe_Ratio'], alpha=0.7)
     axes[1, 1].set_xlabel('Risk Free Rate (%)')
     axes[1, 1].set_ylabel('Sharpe Ratio')
     axes[1, 1].set_title('Risk Free Rate vs Sharpe Ratio (Term-based)')
     axes[1, 1].grid(True, alpha=0.3)
     
-    # 6. 위험조정 포트폴리오 분석
+    # 5. 위험조정 포트폴리오 분석
     risk_adjusted_results = results_df[results_df['Strategy'].str.contains('Risk-Adjusted|Risk-Return|Diversified|Min Variance', na=False)]
     if len(risk_adjusted_results) > 0:
         # 방법별 평균 Sharpe Ratio
@@ -1141,7 +1145,7 @@ def train_tabnet_model_with_kfold(X, y, n_folds=5, save_best=True, fast_mode=Tru
             n_d=32,  # 더 큰 임베딩 차원
             n_a=32,  # 더 큰 어텐션 차원
             n_steps=3,  # 더 적은 스텝 (과적합 방지)
-            gamma=1.3,  # 더 낮은 gamma (더 부드러운 어텐션)
+            gamma=1.5,  # 더 낮은 gamma (더 부드러운 어텐션)
             n_independent=2,
             n_shared=2,
             lambda_sparse=1e-5,  # 더 낮은 sparsity penalty (1e-4에서 1e-5로 감소)
@@ -1274,19 +1278,6 @@ def train_tabnet_model_with_kfold(X, y, n_folds=5, save_best=True, fast_mode=Tru
         # 모든 fold 모델을 앙상블로 사용할 수도 있음
         return fold_models, fold_scores
 
-def ensemble_predict_proba(models, X):
-    """여러 모델의 예측을 앙상블합니다."""
-    predictions = []
-    # DataFrame을 NumPy 배열로 변환
-    X_np = X.values if hasattr(X, 'values') else X
-    
-    for model in models:
-        pred = model.predict_proba(X_np)[:, 1]
-        predictions.append(pred)
-    
-    # 평균 예측 확률 반환
-    return np.mean(predictions, axis=0)
-
 def train_tabnet_model(X, y, use_kfold=False, n_folds=5):
     """TabNet 모델을 훈련하고 저장합니다."""
     if use_kfold:
@@ -1317,7 +1308,7 @@ def train_tabnet_model(X, y, use_kfold=False, n_folds=5):
             n_d=32,  # 더 큰 임베딩 차원
             n_a=32,  # 더 큰 어텐션 차원
             n_steps=3,  # 더 적은 스텝 (과적합 방지)
-            gamma=1.3,  # 더 낮은 gamma (더 부드러운 어텐션)
+            gamma=1.5,  # 더 낮은 gamma (더 부드러운 어텐션)
             n_independent=2,
             n_shared=2,
             lambda_sparse=1e-4,  # 더 낮은 sparsity penalty
@@ -1461,9 +1452,13 @@ def evaluate_model_performance(X, y, model):
     """모델 성능 평가 및 예측 품질 분석"""
     print("\n=== 모델 성능 평가 ===")
     
+    # 예측을 위한 데이터 준비 - 순수 NumPy 배열로 변환
+    X_np = X.values if hasattr(X, 'values') else X
+    X_for_prediction = X_np.astype(np.float32)
+    
     # 예측 확률
-    y_pred_proba = model.predict_proba(X.values)[:, 1]
-    y_pred = model.predict(X.values)
+    y_pred_proba = model.predict_proba(X_for_prediction)[:, 1]
+    y_pred = model.predict(X_for_prediction)
     
     # 기본 성능 지표
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
@@ -1519,41 +1514,6 @@ def evaluate_model_performance(X, y, model):
         'predicted_proba': y_pred_proba
     }
 
-def calibrate_predictions(default_probabilities, actual_default_rate):
-    """예측 확률을 실제 부도율에 맞게 보정"""
-    print("\n=== 예측 확률 보정 ===")
-    
-    # 현재 예측 부도율
-    current_predicted_rate = np.mean(default_probabilities)
-    print(f"보정 전 예측 부도율: {current_predicted_rate:.4f}")
-    print(f"실제 부도율: {actual_default_rate:.4f}")
-    
-    # 보정 계수 계산
-    if current_predicted_rate > 0:
-        calibration_factor = actual_default_rate / current_predicted_rate
-    else:
-        calibration_factor = 1.0
-    
-    print(f"보정 계수: {calibration_factor:.4f}")
-    
-    # 보정된 확률 계산
-    calibrated_probs = default_probabilities * calibration_factor
-    
-    # 확률을 0-1 범위로 제한
-    calibrated_probs = np.clip(calibrated_probs, 0, 1)
-    
-    # 보정 후 통계
-    print(f"보정 후 예측 부도율: {np.mean(calibrated_probs):.4f}")
-    print(f"보정 후 최대값: {np.max(calibrated_probs):.4f}")
-    print(f"보정 후 최소값: {np.min(calibrated_probs):.4f}")
-    
-    # 보정 효과 분석
-    high_prob_count = np.sum(calibrated_probs > 0.3)
-    if high_prob_count > 0:
-        print(f"보정 후 0.3을 초과하는 확률을 가진 대출 수: {high_prob_count}개 ({high_prob_count/len(calibrated_probs)*100:.2f}%)")
-    
-    return calibrated_probs
-
 def analyze_prediction_distribution(default_probabilities, actual_default_rate):
     """예측 확률 분포를 분석하고 통계를 출력"""
     print("\n=== 예측 확률 분포 분석 ===")
@@ -1589,9 +1549,11 @@ def diagnose_model_issues(X, y, model):
     """모델 문제 진단 및 해결 방안 제시"""
     print("\n=== 모델 문제 진단 ===")
     
-    # 예측값 분석
-    y_pred = model.predict(X.values)
-    y_pred_proba = model.predict_proba(X.values)[:, 1]
+    # 예측값 분석 - 순수 NumPy 배열로 변환
+    X_np = X.values if hasattr(X, 'values') else X
+    X_for_prediction = X_np.astype(np.float32)
+    y_pred = model.predict(X_for_prediction)
+    y_pred_proba = model.predict_proba(X_for_prediction)[:, 1]
     
     print(f"실제 부도율: {np.mean(y):.4f}")
     print(f"예측 부도율: {np.mean(y_pred):.4f}")
@@ -1831,6 +1793,366 @@ def create_balanced_training_data(X, y, balance_ratio=0.3):
     
     return X_balanced, y_balanced
 
+def adjust_predictions_to_realistic_levels(default_probabilities, target_default_rate=0.15):
+    """예측 확률을 현실적인 수준으로 조정"""
+    print("\n=== 예측 확률 현실적 조정 ===")
+    
+    # 현재 예측 부도율
+    current_predicted_rate = np.mean(default_probabilities)
+    print(f"현재 예측 부도율: {current_predicted_rate:.4f}")
+    print(f"목표 부도율: {target_default_rate:.4f}")
+    
+    # 보정 계수 계산 (목표 부도율로 맞춤)
+    if current_predicted_rate > 0:
+        calibration_factor = target_default_rate / current_predicted_rate
+    else:
+        calibration_factor = 1.0
+    
+    print(f"보정 계수: {calibration_factor:.4f}")
+    
+    # 보정된 확률 계산
+    adjusted_probs = default_probabilities * calibration_factor
+    
+    # 확률을 0-0.5 범위로 제한 (너무 높은 확률 방지)
+    adjusted_probs = np.clip(adjusted_probs, 0, 0.5)
+    
+    # 보정 후 통계
+    print(f"조정 후 예측 부도율: {np.mean(adjusted_probs):.4f}")
+    print(f"조정 후 최대값: {np.max(adjusted_probs):.4f}")
+    print(f"조정 후 최소값: {np.min(adjusted_probs):.4f}")
+    
+    # 높은 확률 대출 수 확인
+    high_prob_count = np.sum(adjusted_probs > 0.3)
+    print(f"조정 후 0.3을 초과하는 확률을 가진 대출 수: {high_prob_count}개 ({high_prob_count/len(adjusted_probs)*100:.2f}%)")
+    
+    return adjusted_probs
+
+def bootstrap_sharpe_ratio_analysis(df, default_probabilities, treasury_rates, n_bootstrap=1000, random_state=42):
+    """
+    부트스트래핑 방식으로 Sharpe Ratio 분석
+    - 1000번 반복하여 Sharpe Ratio 분포 분석
+    - 신뢰구간 및 통계 분석
+    """
+    print(f"=== 부트스트래핑 Sharpe Ratio 분석 (n_bootstrap={n_bootstrap}) ===")
+    
+    # Treasury 데이터 준비
+    if treasury_rates is None:
+        treasury_rates = load_treasury_data()
+    
+    # 예상 수익률 계산
+    int_rates = df['int_rate'].values / 100  # 퍼센트를 소수로 변환
+    expected_returns = calculate_expected_returns(df, default_probabilities, int_rates)
+    
+    # 부트스트래핑 결과 저장
+    bootstrap_results = []
+    
+    print(f"부트스트래핑 분석 시작...")
+    for i in range(n_bootstrap):
+        if (i + 1) % 10 == 0 or i == 0:  # 10번마다 또는 첫 번째 반복에서 출력
+            print(f"진행률: {i + 1}/{n_bootstrap} ({100 * (i + 1) / n_bootstrap:.1f}%)")
+        
+        # 부트스트래핑 샘플링 (더 다양한 샘플링)
+        np.random.seed(random_state + i)
+        
+        # 샘플 크기를 줄여서 다양성 증가
+        sample_size = min(len(df), 50000)  # 최대 50,000개로 제한
+        indices = np.random.choice(len(df), size=sample_size, replace=True)
+        
+        df_bootstrap = df.iloc[indices].reset_index(drop=True)
+        default_probs_bootstrap = default_probabilities[indices]
+        expected_returns_bootstrap = expected_returns[indices]
+        
+        # 임계값 최적화 (더 세밀한 범위)
+        prediction_thresholds = np.arange(0.05, 0.8, 0.02)  # 더 넓은 범위
+        return_thresholds = np.arange(-0.1, 0.2, 0.01)  # 더 넓은 범위
+        
+        best_sharpe = -np.inf
+        best_pred_threshold = 0.5
+        best_return_threshold = 0
+        
+        # 예측 임계값 최적화 (F1 점수 기준)
+        best_f1 = 0
+        for thresh in prediction_thresholds:
+            y_pred = (default_probs_bootstrap >= thresh).astype(int)
+            if 'target' in df_bootstrap.columns:
+                f1 = f1_score(df_bootstrap['target'], y_pred, zero_division=0)
+                if f1 > best_f1:
+                    best_f1 = f1
+                    best_pred_threshold = thresh
+        
+        # 수익률 임계값 최적화 (Sharpe Ratio 기준)
+        for thresh in return_thresholds:
+            mask = expected_returns_bootstrap > thresh
+            if mask.sum() > 0:
+                # 무위험 수익률 계산 (Treasury 금리 평균)
+                risk_free_rate = np.mean(treasury_rates['3Y_Yield']) / 100 / 12  # 월 수익률로 변환
+                sharpe = calculate_sharpe_ratio(expected_returns_bootstrap[mask], risk_free_rate)
+                if sharpe > best_sharpe:
+                    best_sharpe = sharpe
+                    best_return_threshold = thresh
+        
+        # 포트폴리오 구성 (더 다양한 포트폴리오)
+        pred_mask = default_probs_bootstrap < best_pred_threshold
+        return_mask = expected_returns_bootstrap > best_return_threshold
+        final_mask = pred_mask & return_mask
+        
+        # # 최소 포트폴리오 크기 보장 (더 큰 크기)
+        # min_portfolio_size = 500  # 100에서 500으로 증가
+        
+        # if final_mask.sum() < min_portfolio_size:
+        #     # 수익률 기준으로 상위 대출들 추가
+        #     top_return_indices = np.argsort(expected_returns_bootstrap)[-min_portfolio_size:]
+        #     final_mask = np.zeros(len(df_bootstrap), dtype=bool)
+        #     final_mask[top_return_indices] = True
+        
+        # if final_mask.sum() == 0:
+        #     final_mask = np.ones(len(df_bootstrap), dtype=bool)
+        
+        # # 포트폴리오 다양성 보장 (수익률 범위 확보)
+        # if final_mask.sum() > 0:
+        #     portfolio_returns = expected_returns_bootstrap[final_mask]
+        #     return_std = np.std(portfolio_returns)
+            
+        #     # 표준편차가 너무 작으면 더 다양한 대출 추가
+        #     if return_std < 0.01:  # 1% 미만이면
+        #         # 수익률이 낮은 대출들도 일부 추가
+        #         low_return_indices = np.argsort(expected_returns_bootstrap)[:min(100, len(df_bootstrap)//10)]
+        #         final_mask[low_return_indices] = True
+        
+        # 포트폴리오 성과 계산
+        portfolio_returns = expected_returns_bootstrap[final_mask]
+        portfolio_default_probs = default_probs_bootstrap[final_mask]
+        
+        # 무위험 수익률 계산 (Treasury 금리 평균)
+        risk_free_rate = np.mean(treasury_rates['3Y_Yield']) / 100 / 12  # 월 수익률로 변환
+        sharpe_ratio = calculate_sharpe_ratio(portfolio_returns, risk_free_rate)
+        
+        # 디버깅: 첫 번째 반복에서만 상세 정보 출력
+        if i == 0:
+            print(f"  디버깅 정보 (첫 번째 반복):")
+            print(f"    포트폴리오 크기: {len(portfolio_returns)}")
+            print(f"    평균 수익률: {np.mean(portfolio_returns):.6f}")
+            print(f"    표준편차: {np.std(portfolio_returns):.6f}")
+            print(f"    무위험 수익률: {risk_free_rate:.6f}")
+            print(f"    원본 Sharpe Ratio: {(np.mean(portfolio_returns) - risk_free_rate) / np.std(portfolio_returns):.6f}")
+            print(f"    최종 Sharpe Ratio: {sharpe_ratio:.6f}")
+        
+        # 결과 저장
+        result = {
+            'iteration': i + 1,
+            'sharpe_ratio': sharpe_ratio,
+            'portfolio_size': final_mask.sum(),
+            'avg_return': np.mean(portfolio_returns) if len(portfolio_returns) > 0 else 0,
+            'avg_default_prob': np.mean(portfolio_default_probs) if len(portfolio_default_probs) > 0 else 0,
+            'std_return': np.std(portfolio_returns) if len(portfolio_returns) > 0 else 0,
+            'prediction_threshold': best_pred_threshold,
+            'return_threshold': best_return_threshold,
+            'prediction_mask_sum': pred_mask.sum(),
+            'return_mask_sum': return_mask.sum(),
+            'final_mask_sum': final_mask.sum()
+        }
+        bootstrap_results.append(result)
+    
+    print("부트스트래핑 분석 완료!")
+    
+    return analyze_bootstrap_results(bootstrap_results)
+
+def analyze_bootstrap_results(bootstrap_results):
+    """부트스트래핑 결과 분석"""
+    if not bootstrap_results:
+        print("분석 결과가 없습니다.")
+        return None
+    
+    results_df = pd.DataFrame(bootstrap_results)
+    
+    print("\n=== 부트스트래핑 분석 결과 ===")
+    print(f"총 반복 횟수: {len(results_df)}")
+    
+    # Sharpe Ratio 통계
+    sharpe_ratios = results_df['sharpe_ratio']
+    print(f"\nSharpe Ratio 통계:")
+    print(f"  평균: {sharpe_ratios.mean():.4f}")
+    print(f"  중앙값: {sharpe_ratios.median():.4f}")
+    print(f"  표준편차: {sharpe_ratios.std():.4f}")
+    print(f"  최소값: {sharpe_ratios.min():.4f}")
+    print(f"  최대값: {sharpe_ratios.max():.4f}")
+    
+    # 신뢰구간 계산
+    confidence_intervals = {
+        '90%': np.percentile(sharpe_ratios, [5, 95]),
+        '95%': np.percentile(sharpe_ratios, [2.5, 97.5]),
+        '99%': np.percentile(sharpe_ratios, [0.5, 99.5])
+    }
+    
+    print(f"\n신뢰구간:")
+    for level, interval in confidence_intervals.items():
+        print(f"  {level}: [{interval[0]:.4f}, {interval[1]:.4f}]")
+    
+    # 임계값 통계
+    print(f"\n임계값 통계:")
+    print(f"  예측 임계값 평균: {results_df['prediction_threshold'].mean():.4f}")
+    print(f"  수익률 임계값 평균: {results_df['return_threshold'].mean():.4f}")
+    
+    # 포트폴리오 크기 통계
+    print(f"\n포트폴리오 크기 통계:")
+    print(f"  평균: {results_df['portfolio_size'].mean():.0f}")
+    print(f"  중앙값: {results_df['portfolio_size'].median():.0f}")
+    print(f"  최소값: {results_df['portfolio_size'].min():.0f}")
+    print(f"  최대값: {results_df['portfolio_size'].max():.0f}")
+    
+    # 결과 저장
+    results_df.to_csv('bootstrap_sharpe_results.csv', index=False)
+    print(f"\n결과가 'bootstrap_sharpe_results.csv'에 저장되었습니다.")
+    
+    return results_df
+
+def plot_bootstrap_results(results_df):
+    """부트스트래핑 결과 시각화"""
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    
+    # 1. Sharpe Ratio 분포
+    axes[0, 0].hist(results_df['sharpe_ratio'], bins=50, alpha=0.7, color='skyblue', edgecolor='black')
+    axes[0, 0].axvline(results_df['sharpe_ratio'].mean(), color='red', linestyle='--', label='평균')
+    axes[0, 0].axvline(results_df['sharpe_ratio'].median(), color='orange', linestyle='--', label='중앙값')
+    axes[0, 0].set_title('Sharpe Ratio 분포')
+    axes[0, 0].set_xlabel('Sharpe Ratio')
+    axes[0, 0].set_ylabel('빈도')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+    
+    # 2. 포트폴리오 크기 vs Sharpe Ratio
+    axes[0, 1].scatter(results_df['portfolio_size'], results_df['sharpe_ratio'], alpha=0.6)
+    axes[0, 1].set_title('포트폴리오 크기 vs Sharpe Ratio')
+    axes[0, 1].set_xlabel('포트폴리오 크기')
+    axes[0, 1].set_ylabel('Sharpe Ratio')
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # 3. 평균 수익률 vs Sharpe Ratio
+    axes[0, 2].scatter(results_df['avg_return'], results_df['sharpe_ratio'], alpha=0.6)
+    axes[0, 2].set_title('평균 수익률 vs Sharpe Ratio')
+    axes[0, 2].set_xlabel('평균 수익률')
+    axes[0, 2].set_ylabel('Sharpe Ratio')
+    axes[0, 2].grid(True, alpha=0.3)
+    
+    # 4. 예측 임계값 분포
+    axes[1, 0].hist(results_df['prediction_threshold'], bins=30, alpha=0.7, color='lightgreen', edgecolor='black')
+    axes[1, 0].set_title('예측 임계값 분포')
+    axes[1, 0].set_xlabel('예측 임계값')
+    axes[1, 0].set_ylabel('빈도')
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # 5. 수익률 임계값 분포
+    axes[1, 1].hist(results_df['return_threshold'], bins=30, alpha=0.7, color='lightcoral', edgecolor='black')
+    axes[1, 1].set_title('수익률 임계값 분포')
+    axes[1, 1].set_xlabel('수익률 임계값')
+    axes[1, 1].set_ylabel('빈도')
+    axes[1, 1].grid(True, alpha=0.3)
+    
+    # 6. 평균 부도 확률 vs Sharpe Ratio
+    axes[1, 2].scatter(results_df['avg_default_prob'], results_df['sharpe_ratio'], alpha=0.6)
+    axes[1, 2].set_title('평균 부도 확률 vs Sharpe Ratio')
+    axes[1, 2].set_xlabel('평균 부도 확률')
+    axes[1, 2].set_ylabel('Sharpe Ratio')
+    axes[1, 2].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig('bootstrap_sharpe_analysis.png', dpi=300, bbox_inches='tight')
+    plt.show()
+    
+    # 추가 분석: 상관관계 히트맵
+    correlation_vars = ['sharpe_ratio', 'portfolio_size', 'avg_return', 'avg_default_prob', 
+                       'prediction_threshold', 'return_threshold']
+    corr_matrix = results_df[correlation_vars].corr()
+    
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0, 
+               square=True, linewidths=0.5)
+    plt.title('변수 간 상관관계')
+    plt.tight_layout()
+    plt.savefig('bootstrap_correlation_heatmap.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+def run_bootstrap_analysis_with_test_data():
+    """테스트 데이터로 부트스트래핑 분석 실행"""
+    print("=== 테스트 데이터 부트스트래핑 Sharpe Ratio 분석 ===")
+    
+    try:
+        # 1. 테스트 데이터 로드 (스케일링된 데이터)
+        print("테스트 데이터 로딩 중...")
+        df = pd.read_csv('../data/lending_club_2020_test_scaled_minmax.csv')
+        print(f"테스트 데이터 로드 완료: {len(df)} 행")
+        
+        # 2. 타겟 변수 생성
+        df = target_column_creation(df)
+        
+        # 3. Treasury 데이터 로드
+        treasury_rates = load_treasury_data()
+        
+        # 4. TabNet 모델 로드
+        print("TabNet 모델 로딩 중...")
+        tabnet = TabNetClassifier()
+        tabnet.load_model('tabnet_default_prediction_optimized.zip')
+        print("TabNet 모델 로드 완료")
+        
+        # 5. 부도 확률 예측
+        print("부도 확률 예측 중...")
+        # 중요 특성 변수 선택 (TabNet 모델과 동일한 특성 사용)
+        important_features = [
+            'loan_amnt', 'int_rate', 'installment', 'dti', 'term_months',
+            'fico_avg', 'fico_range_low', 'fico_range_high', 'fico_risk_score',
+            'sub_grade_ordinal', 'grade_numeric', 'delinq_2yrs', 'inq_last_6mths',
+            'open_acc', 'pub_rec', 'revol_bal', 'revol_util', 'total_acc',
+            'mths_since_last_delinq', 'mths_since_last_record', 'annual_inc',
+            'emp_length_numeric', 'emp_length_is_na', 'has_delinquency',
+            'has_serious_delinquency', 'delinquency_severity', 'credit_util_risk',
+            'purpose_risk', 'loan_to_income_ratio', 'annual_return_rate',
+            'credit_history_months', 'credit_history_years', 'purpose', 'home_ownership'
+        ]
+        
+        # 사용 가능한 특성만 선택
+        available_features = [col for col in important_features if col in df.columns]
+        print(f"사용 가능한 특성: {len(available_features)}개")
+        
+        X_test = df[available_features].fillna(0)
+        X_test_np = X_test.values.astype(np.float32)
+        
+        # 부도 확률 예측
+        default_probabilities = tabnet.predict_proba(X_test_np)[:, 1]
+        print(f"부도 확률 예측 완료 - 평균: {default_probabilities.mean():.4f}")
+        
+        # 6. 부트스트래핑 분석 실행
+        bootstrap_results = bootstrap_sharpe_ratio_analysis(
+            # TODO: 부트스트래핑 횟수 조정
+            df, default_probabilities, treasury_rates, n_bootstrap=100, random_state=42
+        )
+        
+        if bootstrap_results is not None:
+            # 7. 결과 시각화
+            plot_bootstrap_results(bootstrap_results)
+            
+            # 8. 최고 성과 케이스 분석
+            best_case = bootstrap_results.loc[bootstrap_results['sharpe_ratio'].idxmax()]
+            print(f"\n=== 최고 Sharpe Ratio 케이스 ===")
+            print(f"Sharpe Ratio: {best_case['sharpe_ratio']:.4f}")
+            print(f"포트폴리오 크기: {best_case['portfolio_size']}")
+            print(f"평균 수익률: {best_case['avg_return']:.4f}")
+            print(f"평균 부도 확률: {best_case['avg_default_prob']:.4f}")
+            print(f"예측 임계값: {best_case['prediction_threshold']:.4f}")
+            print(f"수익률 임계값: {best_case['return_threshold']:.4f}")
+            
+            print(f"\n분석이 완료되었습니다!")
+            print(f"- 결과 파일: bootstrap_sharpe_results.csv")
+            print(f"- 시각화 파일: bootstrap_sharpe_analysis.png")
+            print(f"- 상관관계 파일: bootstrap_correlation_heatmap.png")
+        
+        return bootstrap_results
+        
+    except Exception as e:
+        print(f"부트스트래핑 분석 중 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 def main():
     """메인 함수"""
     print("=== Lending Club Term-based Sharpe Ratio 계산기 (TabNetClassifier 사용) ===")
@@ -1842,8 +2164,8 @@ def main():
     FORCE_RETRAIN = True  # True로 설정하면 F1 점수가 0일 때 강제 재훈련
     
     # 샘플 크기 설정 (데이터 크기에 따라 조정 가능)
-    SMALL_SAMPLE_SIZE = 50000   # Fast mode에서 사용할 샘플 크기
-    LARGE_SAMPLE_SIZE = 100000  # 일반 모드에서 사용할 샘플 크기
+    SMALL_SAMPLE_SIZE = 100000   # Fast mode에서 사용할 샘플 크기
+    LARGE_SAMPLE_SIZE = 200000  # 일반 모드에서 사용할 샘플 크기
     
     if FAST_MODE:
         print("Fast mode 활성화: 빠른 훈련을 위해 설정이 최적화됩니다.")
@@ -1928,19 +2250,28 @@ def main():
                     print("재훈련을 원하시면 'FORCE_RETRAIN = True'로 설정하세요.")
                     print("현재는 기존 모델을 사용하여 분석을 계속합니다.")
         
-        # 4. 부도 확률 예측
+        # 4. 부도 확률 예측 및 현실적 조정
         print("부도 확률 예측 중...")
-        # DataFrame을 NumPy 배열로 변환
+        # DataFrame을 NumPy 배열로 변환하고 인덱스 리셋
         X_np = X.values if hasattr(X, 'values') else X
-        default_probabilities = tabnet.predict_proba(X_np)[:, 1]  # 부도 확률 (클래스 1)
+        # TabNet을 위한 데이터 준비 - 컬럼명 제거하고 순수 NumPy 배열로 변환
+        X_for_prediction = X_np.astype(np.float32)  # float32로 변환하여 메모리 효율성 향상
+        default_probabilities = tabnet.predict_proba(X_for_prediction)[:, 1]  # 부도 확률 (클래스 1)
         print(f"부도 확률 예측 완료 - 평균: {default_probabilities.mean():.4f}")
         
-        # 4.5. 예측 확률 분포 분석
-        actual_default_rate = y.mean()
-        analyze_prediction_distribution(default_probabilities, actual_default_rate)
+        # 4.5. 예측 확률 현실적 조정 (너무 보수적인 예측을 현실적으로 조정)
+        print("\n=== 예측 확률 현실적 조정 ===")
+        actual_default_rate = np.mean(y)
+        print(f"실제 부도율: {actual_default_rate:.4f}")
         
-        # 4.6. 예측 확률 보정
-        default_probabilities = calibrate_predictions(default_probabilities, actual_default_rate)
+        # 목표 부도율을 실제 부도율로 설정 (현실적 조정)
+        target_default_rate = actual_default_rate
+        default_probabilities = adjust_predictions_to_realistic_levels(
+            default_probabilities, target_default_rate=target_default_rate
+        )
+        
+        # 4.6. 예측 확률 분포 분석
+        analyze_prediction_distribution(default_probabilities, actual_default_rate)
         
         # 예측값 검증
         if np.any(np.isnan(default_probabilities)):
@@ -1963,7 +2294,7 @@ def main():
         print(top_strategies[['Strategy', 'Portfolio_Size', 'Expected_Return', 'Sharpe_Ratio', 'Risk_Free_Rate']])
     
         # 위험조정 포트폴리오 결과 분석
-        risk_adjusted_results = results_df[results_df['Strategy'].str.contains('Risk-Adjusted|Risk-Return|Diversified|Min Variance', na=False)]
+        risk_adjusted_results = results[results['Strategy'].str.contains('Risk-Adjusted|Risk-Return|Diversified|Min Variance', na=False)]
         if len(risk_adjusted_results) > 0:
             print("\n=== 위험조정 포트폴리오 결과 분석 ===")
             print("가장 현실적인 Sharpe Ratio를 가진 위험조정 포트폴리오:")

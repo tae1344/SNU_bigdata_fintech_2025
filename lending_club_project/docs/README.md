@@ -137,7 +137,7 @@ lending_club_project/
 │   ├── hyperparameter_tuning.py       # 하이퍼파라미터 튜닝
 │   ├── ensemble_models.py    # 앙상블 모델링 시스템
 │   ├── final_model_selection.py       # 최종 모델 선택 시스템
-│   └── credit_risk_modeling_pipeline.py  # 완전한 모델링 파이프라인
+│   └── modeling_pipeline.py  # 완전한 모델링 파이프라인
 ├── financial_modeling/       # 금융 모델링
 │   ├── cash_flow_calculator.py        # 현금흐름 계산 시스템
 │   ├── investment_scenario_simulator.py # 투자 시나리오 시뮬레이션

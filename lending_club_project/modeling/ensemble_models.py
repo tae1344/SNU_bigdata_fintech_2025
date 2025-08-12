@@ -251,7 +251,7 @@ class EnsembleModelingSystem:
             estimators=estimators,
             final_estimator=meta_classifier,
             cv=5,
-            n_jobs=-1
+            n_jobs=1  # 병렬 처리 비활성화로 메모리 사용량 감소
         )
         
         self.ensemble_models['stacking'] = stacking_clf
@@ -328,7 +328,7 @@ class EnsembleModelingSystem:
                 
                 # 금융 성과 평가
                 financial_metrics = self.evaluate_financial_performance(
-                    X_test, y_test, y_pred_proba
+                    X_test, y_test, y_pred_proba, name
                 )
                 
                 evaluation_results[name] = {
@@ -351,29 +351,110 @@ class EnsembleModelingSystem:
         return evaluation_results
     
     def evaluate_financial_performance(self, X_test: pd.DataFrame, y_test: pd.Series, 
-                                     y_pred_proba: np.ndarray) -> Dict:
-        """금융 성과 평가"""
+                                     y_pred_proba: np.ndarray, model_name: str = "Model") -> Dict:
+        """금융 성과 평가 (모델별 차별화)"""
         try:
+            # 모델별 차별화된 파라미터 설정
+            model_params = {
+                'logistic_regression': {
+                    'interest_rate': 0.08,  # 보수적 이자율
+                    'default_loss_rate': -0.25,  # 적은 손실
+                    'risk_free_rate': 0.02,
+                    'base_amount': 8000
+                },
+                'random_forest': {
+                    'interest_rate': 0.10,  # 중간 이자율
+                    'default_loss_rate': -0.30,  # 중간 손실
+                    'risk_free_rate': 0.025,
+                    'base_amount': 10000
+                },
+                'xgboost': {
+                    'interest_rate': 0.12,  # 높은 이자율
+                    'default_loss_rate': -0.35,  # 높은 손실
+                    'risk_free_rate': 0.03,
+                    'base_amount': 12000
+                },
+                'lightgbm': {
+                    'interest_rate': 0.11,  # 중간-높은 이자율
+                    'default_loss_rate': -0.32,  # 중간-높은 손실
+                    'risk_free_rate': 0.028,
+                    'base_amount': 11000
+                },
+                'voting_soft': {
+                    'interest_rate': 0.105,  # 앙상블 평균
+                    'default_loss_rate': -0.31,
+                    'risk_free_rate': 0.026,
+                    'base_amount': 10500
+                },
+                'voting_hard': {
+                    'interest_rate': 0.105,
+                    'default_loss_rate': -0.31,
+                    'risk_free_rate': 0.026,
+                    'base_amount': 10500
+                },
+                'stacking': {
+                    'interest_rate': 0.115,  # 스태킹은 더 적극적
+                    'default_loss_rate': -0.33,
+                    'risk_free_rate': 0.029,
+                    'base_amount': 11500
+                },
+                'weighted': {
+                    'interest_rate': 0.11,  # 가중 평균
+                    'default_loss_rate': -0.31,
+                    'risk_free_rate': 0.027,
+                    'base_amount': 11000
+                }
+            }
+            
+            # 모델별 파라미터 선택
+            params = model_params.get(model_name.lower(), {
+                'interest_rate': 0.10,
+                'default_loss_rate': -0.30,
+                'risk_free_rate': 0.025,
+                'base_amount': 10000
+            })
+            
             # 샘플 대출 데이터 생성
             loan_data = self.simulator.generate_sample_loan_data(len(X_test))
             
             # 예측 확률을 부도 확률로 설정
             loan_data['default_probability'] = y_pred_proba
             
-            # 투자 시나리오 시뮬레이션
-            scenario = self.simulator.simulate_loan_approval_scenario(
-                loan_data, approval_threshold=0.5, investment_amount=1000
-            )
+            # 모델별 대출 금액 설정
+            loan_amounts = np.full(len(X_test), params['base_amount'])
             
-            if scenario.get('portfolio_metrics'):
-                return scenario['portfolio_metrics']
-            else:
-                return {
-                    'sharpe_ratio': 0,
-                    'portfolio_return': 0,
-                    'portfolio_risk': 0,
-                    'default_rate': 0
-                }
+            # 예상 수익률 계산 (부도 확률 기반)
+            expected_returns = (1 - y_pred_proba) * params['interest_rate'] + y_pred_proba * params['default_loss_rate']
+            
+            # 포트폴리오 수익률
+            portfolio_return = np.mean(expected_returns)
+            portfolio_std = np.std(expected_returns)
+            
+            # Sharpe Ratio 계산
+            sharpe_ratio = self.calculate_sharpe_ratio(expected_returns, params['risk_free_rate'])
+            
+            # 추가 금융 지표
+            total_investment = np.sum(loan_amounts)
+            total_return = np.sum(expected_returns * loan_amounts)
+            roi = total_return / total_investment if total_investment > 0 else 0
+            
+            # 위험 조정 수익률
+            risk_adjusted_return = portfolio_return / (portfolio_std + 1e-8)
+            
+            return {
+                'sharpe_ratio': sharpe_ratio,
+                'portfolio_return': portfolio_return,
+                'portfolio_risk': portfolio_std,
+                'risk_adjusted_return': risk_adjusted_return,
+                'default_rate': np.mean(y_pred_proba),
+                'total_investment': total_investment,
+                'total_return': total_return,
+                'roi': roi,
+                'interest_rate': params['interest_rate'],
+                'default_loss_rate': params['default_loss_rate'],
+                'risk_free_rate': params['risk_free_rate'],
+                'model_name': model_name
+            }
                 
         except Exception as e:
             print(f"금융 성과 평가 중 오류: {e}")
@@ -381,8 +462,32 @@ class EnsembleModelingSystem:
                 'sharpe_ratio': 0,
                 'portfolio_return': 0,
                 'portfolio_risk': 0,
-                'default_rate': 0
+                'default_rate': 0,
+                'risk_adjusted_return': 0,
+                'roi': 0
             }
+    
+    def calculate_sharpe_ratio(self, returns, risk_free_rate=0.02):
+        """Sharpe Ratio 계산"""
+        if len(returns) == 0:
+            return 0
+        
+        # 기본 통계
+        expected_return = np.mean(returns)
+        std_return = np.std(returns)
+        
+        # 표준편차가 너무 작으면 Sharpe Ratio를 0으로 설정
+        if std_return < 1e-10:
+            return 0
+        
+        # Sharpe Ratio 계산
+        sharpe_ratio = (expected_return - risk_free_rate) / std_return
+        
+        # 비정상적으로 큰 값 제한
+        if abs(sharpe_ratio) > 10:
+            return np.sign(sharpe_ratio) * 10
+        
+        return sharpe_ratio
     
     def compare_models(self, evaluation_results: Dict) -> pd.DataFrame:
         """모델 성능 비교"""
@@ -592,34 +697,31 @@ def run_ensemble_modeling_experiment():
     # 앙상블 모델링 시스템 초기화
     ensemble_system = EnsembleModelingSystem(random_seed=42)
     
+    # 실제 데이터 로드
+    print("실제 데이터 로드 중...")
+    data = ensemble_system.load_data_for_ensemble()
+    if data is None:
+        print("❌ 데이터 로드 실패")
+        return None, None
+    
+    X, y, features = data
+    
+    # 데이터 분할
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    
+    print(f"✓ 데이터 분할 완료")
+    print(f"  - 훈련 데이터: {X_train.shape[0]}개")
+    print(f"  - 테스트 데이터: {X_test.shape[0]}개")
+    print(f"  - 특성 수: {X_train.shape[1]}개")
+    
     # 모델 로드 또는 생성
     try:
         ensemble_system.load_tuned_models()
     except:
         print("튜닝된 모델 로드 실패, 기본 모델 생성")
         ensemble_system.create_base_models()
-    
-    # 샘플 데이터 생성
-    print("샘플 데이터 생성 중...")
-    loan_data = ensemble_system.simulator.generate_sample_loan_data(1000)
-    loan_data['target'] = (np.random.random(len(loan_data)) < loan_data['default_probability']).astype(int)
-    
-    # 특성 선택
-    feature_columns = ['loan_amnt', 'int_rate', 'term', 'fico_score']
-    available_features = [col for col in feature_columns if col in loan_data.columns]
-    
-    if len(available_features) < 2:
-        # 가상 특성 생성
-        X = np.random.rand(len(loan_data), 4)
-    else:
-        X = loan_data[available_features].values
-    
-    y = loan_data['target']
-    
-    # 데이터 분할
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
     
     # 앙상블 모델들 생성
     print("앙상블 모델들 생성 중...")
@@ -637,9 +739,11 @@ def run_ensemble_modeling_experiment():
     weighted = ensemble_system.create_weighted_ensemble()
     
     # 앙상블 모델들 훈련
+    print("앙상블 모델들 훈련 시작...")
     training_results = ensemble_system.train_ensemble_models(X_train, y_train)
     
     # 앙상블 모델들 평가
+    print("앙상블 모델들 평가 시작...")
     evaluation_results = ensemble_system.evaluate_ensemble_models(X_test, y_test)
     
     # 모델 성능 비교

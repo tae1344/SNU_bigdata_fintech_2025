@@ -91,6 +91,9 @@ class BasicModelsRefactored:
         # 모델 훈련
         trained_model = model.train(X_train, y_train, X_test, y_test)
         
+        # 모델 이름을 결과에 추가
+        model.results['model_name'] = model.model_name
+        
         # 결과 저장
         self.models[model_type] = model
         self.results[model_type] = model.results
@@ -124,30 +127,83 @@ class BasicModelsRefactored:
         
         return comparison_df
     
-    def plot_roc_curves(self, y_test):
-        """ROC 곡선 시각화"""
+    def plot_roc_curves(self):
+        """ROC 곡선 시각화 - 각 모델별로 개별 처리"""
+        print("📈 ROC 곡선 생성 중...")
+        
+        if not self.results:
+            print("⚠️ 훈련된 모델이 없어 ROC 곡선을 생성할 수 없습니다.")
+            return
+        
+        # 각 모델별로 개별 ROC 곡선 생성
+        for model_name, result in self.results.items():
+            try:
+                if 'y_pred_proba' in result and 'y_test' in result:
+                    y_true = result['y_test']
+                    y_pred_proba = result['y_pred_proba']
+                    
+                    # 데이터 크기 확인
+                    if len(y_true) != len(y_pred_proba):
+                        print(f"⚠️ {model_name}: 데이터 크기 불일치 (y_true: {len(y_true)}, y_pred: {len(y_pred_proba)})")
+                        continue
+                    
+                    # ROC 곡선 계산
+                    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+                    auc_score = roc_auc_score(y_true, y_pred_proba)
+                    
+                    # 개별 ROC 곡선 플롯
+                    plt.figure(figsize=(8, 6))
+                    plt.plot(fpr, tpr, label=f'{model_name} (AUC = {auc_score:.4f})')
+                    plt.plot([0, 1], [0, 1], 'k--', alpha=0.5)
+                    plt.xlabel('False Positive Rate')
+                    plt.ylabel('True Positive Rate')
+                    plt.title(f'{model_name} ROC Curve')
+                    plt.legend()
+                    plt.grid(True, alpha=0.3)
+                    
+                    # 파일 저장
+                    plot_path = BASIC_MODELS_REPORT_PATH.parent / f'{model_name}_roc_curve.png'
+                    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+                    plt.close()
+                    
+                    print(f"✓ {model_name} ROC 곡선 저장: {plot_path}")
+                    
+            except Exception as e:
+                print(f"⚠️ {model_name} ROC 곡선 생성 실패: {e}")
+                continue
+        
+        # 통합 ROC 곡선 (가능한 경우)
+        print("\n📊 통합 ROC 곡선 생성 중...")
         plt.figure(figsize=(10, 8))
         
-        for model_name, model in self.models.items():
-            if model.results:
-                fpr, tpr, _ = roc_curve(y_test, model.results['y_pred_proba'])
-                auc = model.results['auc']
-                plt.plot(fpr, tpr, label=f'{model_name} (AUC = {auc:.3f})')
+        for model_name, result in self.results.items():
+            try:
+                if 'y_pred_proba' in result and 'y_test' in result:
+                    y_true = result['y_test']
+                    y_pred_proba = result['y_pred_proba']
+                    
+                    if len(y_true) == len(y_pred_proba):
+                        fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+                        auc_score = roc_auc_score(y_true, y_pred_proba)
+                        plt.plot(fpr, tpr, label=f'{model_name} (AUC = {auc_score:.4f})')
+                        
+            except Exception as e:
+                print(f"⚠️ {model_name} 통합 ROC 곡선에서 제외: {e}")
+                continue
         
-        plt.plot([0, 1], [0, 1], 'k--', label='Random')
+        plt.plot([0, 1], [0, 1], 'k--', alpha=0.5)
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('ROC Curves Comparison')
+        plt.title('모든 모델 ROC Curves 비교')
         plt.legend()
         plt.grid(True, alpha=0.3)
         
-        # 저장
-        roc_plot_path = BASIC_MODELS_REPORT_PATH.parent / 'roc_curves_comparison_refactored.png'
-        ensure_directory_exists(roc_plot_path.parent)
-        plt.savefig(roc_plot_path, dpi=300, bbox_inches='tight')
-        plt.close()  # 창을 닫아서 메모리 해제
+        # 통합 ROC 곡선 저장
+        combined_plot_path = BASIC_MODELS_REPORT_PATH.parent / 'all_models_roc_curves.png'
+        plt.savefig(combined_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
         
-        print(f"✓ ROC 곡선이 '{roc_plot_path}'에 저장되었습니다.")
+        print(f"✓ 통합 ROC 곡선 저장: {combined_plot_path}")
     
     def plot_feature_importance(self, top_n=10):
         """특성 중요도 시각화"""
@@ -324,12 +380,12 @@ def main():
     models.train_model("xgboost")
     
     # LightGBM 훈련
-    print("4. LightGBM 훈련 중...")
-    models.train_model("lightgbm")
+    # print("4. LightGBM 훈련 중...")
+    # models.train_model("lightgbm")
     
-    # TabNet 훈련
-    print("5. TabNet 훈련 중...")
-    models.train_model("tabnet")
+    # # TabNet 훈련
+    # print("5. TabNet 훈련 중...")
+    # models.train_model("tabnet")
     
     print(f"\n✓ 훈련 완료된 모델 수: {len(models.results)}개")
     
@@ -339,12 +395,9 @@ def main():
     # 시각화 (결과가 있는 경우에만)
     if len(models.results) > 0:
         print("\n📈 시각화 생성 중...")
-        # 임시로 기본 데이터로 y_test 생성 (실제로는 각 모델별로 다를 수 있음)
-        data = models.data_loader.load_basic_data()
-        if data:
-            _, _, _, y_test, _ = data
-            models.plot_roc_curves(y_test)
-            models.plot_feature_importance()
+        # ROC 곡선 생성 (각 모델별로 개별 처리)
+        models.plot_roc_curves()
+        models.plot_feature_importance()
         
         # 보고서 생성
         models.generate_model_report()

@@ -12,6 +12,6 @@ __all__ = [
     'LogisticRegressionModel',
     'RandomForestModel', 
     'XGBoostModel',
-    # 'LightGBMModel',
-    # 'TabNetModel'
+    'LightGBMModel',
+    'TabNetModel'
 ] 

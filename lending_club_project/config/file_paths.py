@@ -20,6 +20,7 @@ DOCS_DIR = PROJECT_ROOT / "docs"
 # 데이터 파일
 RAW_DATA_FILE = "lending_club_2020_train.csv"
 SAMPLE_DATA_FILE = "lending_club_sample.csv"
+TEST_DATA_FILE = "lending_club_2020_test.csv"
 
 # 전처리된 데이터 파일
 ENCODED_DATA_FILE = "lending_club_sample_encoded.csv"
@@ -27,6 +28,10 @@ CLEANED_DATA_FILE = "lending_club_sample_cleaned.csv"
 SCALED_STANDARD_DATA_FILE = "lending_club_sample_scaled_standard.csv"
 SCALED_MINMAX_DATA_FILE = "lending_club_sample_scaled_minmax.csv"
 NEW_FEATURES_DATA_FILE = "lending_club_sample_with_new_features.csv"
+
+# 검증용 데이터 파일
+VALIDATION_SCALED_STANDARD_DATA_FILE = "validation_scaled_standard.csv"
+VALIDATION_SCALED_MINMAX_DATA_FILE = "validation_scaled_minmax.csv"
 
 # 특성 선택 관련 파일
 SELECTED_FEATURES_FILE = "selected_features_final.csv"
@@ -97,6 +102,7 @@ def get_tools_file_path(filename: str) -> Path:
 # 주요 파일 경로 상수
 RAW_DATA_PATH = get_data_file_path(RAW_DATA_FILE)
 SAMPLE_DATA_PATH = get_data_file_path(SAMPLE_DATA_FILE)
+TEST_DATA_PATH = get_data_file_path(TEST_DATA_FILE)
 
 # 모델링 관련 경로
 MODELING_DIR = PROJECT_ROOT / "modeling"
@@ -109,6 +115,10 @@ CLEANED_DATA_PATH = get_feature_engineering_file_path(CLEANED_DATA_FILE)
 SCALED_STANDARD_DATA_PATH = get_feature_engineering_file_path(SCALED_STANDARD_DATA_FILE)
 SCALED_MINMAX_DATA_PATH = get_feature_engineering_file_path(SCALED_MINMAX_DATA_FILE)
 NEW_FEATURES_DATA_PATH = get_feature_engineering_file_path(NEW_FEATURES_DATA_FILE)
+
+# 검증용 데이터 경로
+VALIDATION_SCALED_STANDARD_DATA_PATH = get_feature_engineering_file_path(VALIDATION_SCALED_STANDARD_DATA_FILE)
+VALIDATION_SCALED_MINMAX_DATA_PATH = get_feature_engineering_file_path(VALIDATION_SCALED_MINMAX_DATA_FILE)
 
 SELECTED_FEATURES_PATH = get_data_analysis_file_path(SELECTED_FEATURES_FILE)
 FEATURE_SELECTION_REPORT_PATH = get_reports_file_path(FEATURE_SELECTION_REPORT_FILE)
@@ -230,6 +240,7 @@ def print_file_paths():
     print("=== 주요 데이터 파일 ===")
     print(f"원본 데이터: {RAW_DATA_PATH}")
     print(f"샘플 데이터: {SAMPLE_DATA_PATH}")
+    print(f"테스트 데이터: {TEST_DATA_PATH}")
     print(f"인코딩된 데이터: {ENCODED_DATA_PATH}")
     print(f"새로운 특성 데이터: {NEW_FEATURES_DATA_PATH}")
     print()

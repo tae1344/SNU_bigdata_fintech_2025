@@ -12,11 +12,10 @@ class RandomForestModel(BaseModel):
     
     def __init__(self, random_state=42, **kwargs):
         super().__init__(random_state)
+        self.model_name = "random_forest"  # 모델 이름 설정
         self.model_params = {
             'n_estimators': 100,
             'max_depth': 10,
-            'min_samples_split': 5,
-            'min_samples_leaf': 2,
             'random_state': self.random_state,
             'class_weight': 'balanced',
             'n_jobs': -1,
@@ -99,4 +98,69 @@ class RandomForestModel(BaseModel):
             tree_pred = self.model.estimators_[i].predict(X)
             predictions.append(tree_pred)
         
-        return np.array(predictions) 
+        return np.array(predictions)
+    
+    # ===== Sharpe Ratio 분석 기능 =====
+    
+    def analyze_credit_risk_with_sharpe_ratio(self, df, treasury_rates):
+        """
+        랜덤포레스트 모델을 사용한 신용위험 분석 및 Sharpe Ratio 계산
+        """
+        print("🌲 랜덤포레스트 모델 기반 신용위험 분석 중...")
+        
+        if self.model is None:
+            print("Error: 모델이 훈련되지 않았습니다.")
+            return None
+        
+        # Treasury 금리 설정
+        self.set_treasury_rates(treasury_rates)
+        
+        # 부도 확률 예측
+        X = df.select_dtypes(include=[np.number])  # 수치형 특성만 선택
+        default_probabilities = self.predict_proba(X)[:, 1]
+        
+        print(f"부도 확률 예측 완료 - 평균: {default_probabilities.mean():.4f}")
+        
+        # Sharpe Ratio 분석 (BaseModel의 공통 기능 사용)
+        portfolio_results = self.analyze_portfolio_with_sharpe_ratio(df, default_probabilities)
+        
+        if portfolio_results:
+            print(f"\n=== 랜덤포레스트 모델 Sharpe Ratio 분석 결과 ===")
+            print(f"최적 Threshold: {portfolio_results['optimal_threshold']:.3f}")
+            print(f"승인된 포트폴리오 Sharpe Ratio: {portfolio_results['approved_portfolio_sharpe']:.4f}")
+            print(f"전체 포트폴리오 Sharpe Ratio: {portfolio_results['total_portfolio_sharpe']:.4f}")
+            print(f"승인된 대출 비율: {portfolio_results['approved_ratio']:.2%}")
+            print(f"기각된 대출 비율: {portfolio_results['rejected_ratio']:.2%}")
+        
+        return portfolio_results
+    
+    def analyze_feature_importance_impact(self, df, treasury_rates, top_features=10):
+        """
+        특성 중요도가 높은 특성들만 사용한 Sharpe Ratio 분석
+        """
+        print("🌲 특성 중요도 기반 Sharpe Ratio 분석 중...")
+        
+        if self.feature_importance is None:
+            print("Error: 특성 중요도가 계산되지 않았습니다.")
+            return None
+        
+        # 상위 특성들 선택
+        top_features_list = self.feature_importance.head(top_features)['feature'].tolist()
+        print(f"상위 {top_features}개 특성 사용: {top_features_list}")
+        
+        # 선택된 특성들만으로 예측
+        X_selected = df[top_features_list]
+        default_probabilities = self.predict_proba(X_selected)[:, 1]
+        
+        # Treasury 금리 설정
+        self.set_treasury_rates(treasury_rates)
+        
+        # Sharpe Ratio 분석
+        portfolio_results = self.analyze_portfolio_with_sharpe_ratio(df, default_probabilities)
+        
+        if portfolio_results:
+            print(f"\n=== 특성 중요도 기반 Sharpe Ratio 분석 결과 ===")
+            print(f"사용된 특성 수: {len(top_features_list)}")
+            print(f"전체 포트폴리오 Sharpe Ratio: {portfolio_results['total_portfolio_sharpe']:.4f}")
+        
+        return portfolio_results 

@@ -201,6 +201,7 @@ class IntegratedPreprocessingPipeline:
         print("-" * 40)
         
         # 타겟 변수 매핑
+        # TODO: 타겟 변수 매핑 추가
         loan_status_mapping = {
             'Fully Paid': 0,
             'Current': 0,
@@ -244,7 +245,7 @@ class IntegratedPreprocessingPipeline:
         return True
     
     def handle_high_missing_features(self):
-        """고결측치 변수 처리 (Phase 5.1)"""
+        """고결측치 변수 처리 (Phase 5.1) - is_missing 플래그 생성하지 않음"""
         start_time = time.time()
         print("\n🔍 5단계: 고결측치 변수 처리")
         print("-" * 40)
@@ -258,13 +259,10 @@ class IntegratedPreprocessingPipeline:
             missing_ratio = missing_ratios[feature]
             print(f"  - {feature}: {missing_ratio:.2f}%")
         
-        # 고결측치 변수별 처리 전략
+        # 고결측치 변수별 처리 전략 (is_missing 플래그 생성하지 않음)
         for feature in high_missing_features:
             if feature in self.df.columns:
-                # 결측치 플래그 생성
-                self.df[f'{feature}_is_missing'] = self.df[feature].isna().astype(int)
-                
-                # 변수 타입에 따른 처리
+                # 변수 타입에 따른 처리만 수행
                 if self.df[feature].dtype in ['object', 'category']:
                     # 범주형 변수: 최빈값으로 대체
                     mode_value = self.df[feature].mode().iloc[0] if not self.df[feature].mode().empty else 'Unknown'
@@ -277,6 +275,7 @@ class IntegratedPreprocessingPipeline:
                 print(f"  ✓ {feature}: 결측치 처리 완료")
         
         print(f"✓ 고결측치 변수 처리 완료: {len(high_missing_features)}개")
+        print("  (is_missing 플래그는 생성하지 않음)")
         
         self.execution_times['high_missing_features'] = time.time() - start_time
         return True
@@ -871,10 +870,6 @@ class IntegratedPreprocessingPipeline:
                 'description': '타겟 변수 (부도 예측용)',
                 'variables': ['target']
             },
-            'missing_indicator_variables': {
-                'description': '결측치 표시 변수 (30% 이상 결측치가 있는 변수들)',
-                'variables': [col for col in separation_info['new_columns'] if col.endswith('_is_missing')]
-            },
             'fico_derived_variables': {
                 'description': 'FICO 점수 관련 파생 변수',
                 'variables': ['fico_avg', 'last_fico_avg', 'fico_change', 'fico_change_rate', 'fico_range']
@@ -1360,7 +1355,7 @@ class IntegratedPreprocessingPipeline:
     
     def remove_unnecessary_features(self):
         start_time = time.time()
-        print("\n��️ 모델링에 불필요한 특성 제거")
+        print("\n🗑️ 모델링에 불필요한 특성 제거")
         print("-" * 40)
         
         # 제거할 특성들 정의 (수정됨 - 중요 특성 보존)
@@ -1415,60 +1410,6 @@ class IntegratedPreprocessingPipeline:
         self.execution_times['remove_unnecessary_features'] = time.time() - start_time
         return True
     
-    def filter_is_missing_features(self):
-        """is_missing 특성 필터링 (중요도 기반)"""
-        start_time = time.time()
-        print("\n🔍 is_missing 특성 필터링")
-        print("-" * 40)
-        
-        if 'target' not in self.df.columns:
-            print("  ⚠️ 타겟 변수가 없어 필터링을 건너뜀")
-            return True
-        
-        # is_missing 특성들 찾기
-        is_missing_features = [col for col in self.df.columns if col.endswith('_is_missing')]
-        
-        if not is_missing_features:
-            print("  ✓ is_missing 특성이 없음")
-            return True
-        
-        print(f"  발견된 is_missing 특성: {len(is_missing_features)}개")
-        
-        # 중요도 평가
-        important_is_missing = []
-        correlation_threshold = 0.05  # 상관관계 임계값
-        
-        for feature in is_missing_features:
-            # 타겟과의 상관관계 계산
-            correlation = abs(self.df[feature].corr(self.df['target']))
-            
-            # 결측치 비율 계산
-            missing_ratio = self.df[feature].mean()
-            
-            # 중요도 점수 (상관관계 + 결측치 비율)
-            importance_score = correlation * missing_ratio
-            
-            print(f"    {feature}: 상관관계={correlation:.4f}, 결측비율={missing_ratio:.2f}, 중요도={importance_score:.4f}")
-            
-            # 중요도가 높거나 상관관계가 임계값을 넘는 특성만 유지
-            if correlation > correlation_threshold or importance_score > 0.01:
-                important_is_missing.append(feature)
-                print(f"      ✓ 보존: {feature}")
-            else:
-                print(f"      ❌ 제거: {feature}")
-        
-        # 중요하지 않은 is_missing 특성 제거
-        unimportant_features = [f for f in is_missing_features if f not in important_is_missing]
-        if unimportant_features:
-            self.df = self.df.drop(columns=unimportant_features)
-            print(f"  ✓ 제거된 is_missing 특성: {len(unimportant_features)}개")
-            print(f"  ✓ 보존된 is_missing 특성: {len(important_is_missing)}개")
-        else:
-            print(f"  ✓ 모든 is_missing 특성이 중요하여 보존됨")
-        
-        self.execution_times['is_missing_filtering'] = time.time() - start_time
-        return True
-    
     def run_pipeline(self, create_clean=True):
         """전체 파이프라인 실행"""
         start_time = time.time()
@@ -1484,7 +1425,6 @@ class IntegratedPreprocessingPipeline:
             ("타겟 변수 생성", self.create_target_variable),
             ("문자열 데이터 정리", self.clean_percentage_columns),
             ("높은 결측치 특성 처리", self.handle_high_missing_features),
-            ("is_missing 특성 필터링", self.filter_is_missing_features),
             ("FICO 특성 생성", self.create_fico_features),
             ("범주형 변수 인코딩", self.enhanced_categorical_encoding),
             ("이상치 처리", self.handle_outliers),

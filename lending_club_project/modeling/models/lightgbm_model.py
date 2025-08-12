@@ -20,7 +20,7 @@ class LightGBMModel(BaseModel):
     
     def __init__(self, random_state=42, **kwargs):
         super().__init__(random_state)
-        
+        self.model_name = "lightgbm"  # 모델 이름 설정
         if not LIGHTGBM_AVAILABLE:
             raise ImportError("LightGBM이 설치되지 않았습니다. 'pip install lightgbm'로 설치해주세요.")
         
@@ -30,6 +30,7 @@ class LightGBMModel(BaseModel):
             'learning_rate': 0.1,
             'random_state': self.random_state,
             'class_weight': 'balanced',
+            'n_jobs': -1,
             'verbose': -1,
             **kwargs
         }

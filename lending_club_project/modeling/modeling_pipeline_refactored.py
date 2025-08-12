@@ -31,11 +31,11 @@ class ModelingPipelineRefactored:
     def __init__(self):
         """초기화"""
         self.scripts = [
-            "basic_models_refactored.py",  # 리팩토링된 기본 모델
-            "model_evaluation_framework.py", 
-            "hyperparameter_tuning.py",
-            "ensemble_models.py",
-            "final_model_selection.py"
+            "data_preprocessing.py",          # 클래스 불균형 조정 (먼저 실행)
+            "basic_models_refactored.py",     # 기본 모델 훈련
+            "hyperparameter_tuning.py",       # 하이퍼파라미터 튜닝
+            "ensemble_models.py",             # 앙상블 모델
+            "final_model_selection.py"        # 최종 모델 선택
         ]
         self.results = {}
         
@@ -104,6 +104,8 @@ class ModelingPipelineRefactored:
             from config.file_paths import (
                 SCALED_STANDARD_DATA_PATH,
                 SCALED_MINMAX_DATA_PATH,
+                VALIDATION_SCALED_STANDARD_DATA_PATH,
+                VALIDATION_SCALED_MINMAX_DATA_PATH,
                 NEW_FEATURES_DATA_PATH,
                 SELECTED_FEATURES_PATH,
                 file_exists
@@ -111,7 +113,9 @@ class ModelingPipelineRefactored:
             
             required_files = [
                 SCALED_STANDARD_DATA_PATH,
-                SCALED_MINMAX_DATA_PATH, 
+                SCALED_MINMAX_DATA_PATH,
+                VALIDATION_SCALED_STANDARD_DATA_PATH,
+                VALIDATION_SCALED_MINMAX_DATA_PATH,
                 NEW_FEATURES_DATA_PATH,
                 SELECTED_FEATURES_PATH
             ]
@@ -127,6 +131,13 @@ class ModelingPipelineRefactored:
                     print(f"  - {file_path}")
                 print("\n먼저 feature_engineering 스크립트들을 실행해주세요.")
                 return False
+            
+            print("✅ 훈련용 데이터 파일 확인:")
+            print(f"  - Standard Scaled: {SCALED_STANDARD_DATA_PATH}")
+            print(f"  - MinMax Scaled: {SCALED_MINMAX_DATA_PATH}")
+            print("✅ 검증용 데이터 파일 확인:")
+            print(f"  - Standard Scaled: {VALIDATION_SCALED_STANDARD_DATA_PATH}")
+            print(f"  - MinMax Scaled: {VALIDATION_SCALED_MINMAX_DATA_PATH}")
             
             # 리팩토링된 모델 클래스들 확인
             try:
