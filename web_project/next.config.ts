@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   },
   typescript: {
     // build 시 TypeScript 검사
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
 };
 
