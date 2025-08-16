@@ -1,9 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useThemeColors } from "../hooks/useThemeColors";
 
 interface CountryData {
   name: string;
@@ -12,18 +10,14 @@ interface CountryData {
 }
 
 interface WorldInfidelityMapProps {
-  showRankings?: boolean;
-  onToggleRankings?: () => void;
   className?: string;
 }
 
-export function WorldInfidelityMap({ showRankings = false, onToggleRankings, className }: WorldInfidelityMapProps) {
-  const { colors, isDark } = useThemeColors();
+export function WorldInfidelityMap({ className }: WorldInfidelityMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [data, setData] = useState<Map<string, CountryData>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   // 국가 데이터 (ISO3 코드 -> 데이터)
   const countryData = {
@@ -76,20 +70,13 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
     return NUM_TO_ISO3[n] || null;
   };
 
-  // 마운트 상태 확인
   useEffect(() => {
-    setMounted(true);
+    setData(new Map(Object.entries(countryData)));
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-    
-    setData(new Map(Object.entries(countryData)));
-    setLoading(false);
-  }, [mounted]);
-
-  useEffect(() => {
-    if (!mounted || !data.size || !svgRef.current) return;
+    if (!data.size || !svgRef.current) return;
 
     const loadD3 = async () => {
       try {
@@ -118,7 +105,7 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
     return () => {
       resizeObserver.disconnect();
     };
-  }, [mounted, data]);
+  }, [data]);
 
   const renderMap = async (d3: any, topojson: any) => {
     try {
@@ -134,7 +121,7 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
 
       // 투영 설정 - 컨테이너에 꽉 차도록 마진 최소화
       const projection = d3.geoNaturalEarth1()
-        .fitExtent([[20, 20], [width - 20, height - 20]], { type: 'Sphere' });
+        .fitExtent([[12, 12], [width - 12, height - 12]], { type: 'Sphere' });
       const path = d3.geoPath(projection);
 
       // 색상 스케일 (10% -> 55%)
@@ -154,7 +141,7 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
       // 구체 배경 그리기
       svg.append('path')
         .attr('d', path({ type: 'Sphere' }))
-        .attr('fill', isDark ? colors.background.primary : '#f8fafc');
+        .attr('fill', '#0b111c');
 
       // 국가 그룹
       const g = svg.append('g');
@@ -174,19 +161,19 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
         .attr('fill', (d: any) => {
           const code = d.id ? ISO3_from_numeric(d.id) : null;
           const item = code && data.get(code);
-          return item ? color(item.value) : (isDark ? '#475569' : '#e2e8f0');
+          return item ? color(item.value) : '#cfd4dc';
         })
-        .attr('stroke', isDark ? colors.border : '#cbd5e1')
+        .attr('stroke', 'rgba(0,0,0,.35)')
         .attr('stroke-width', 0.5)
         .style('cursor', 'pointer')
         .on('mousemove', function(this: any, event: any, d: any) {
           const [x, y] = d3.pointer(event);
           const code = d.id ? ISO3_from_numeric(d.id) : null;
-          const item: CountryData | undefined = code ? data.get(code) : undefined;
-          const name = item?.name || (d.properties?.name as string) || 'Not ranked';
+          const item: CountryData | undefined  = code ? data.get(code) : undefined;
+          const name = item?.name || d.properties.name || 'Not ranked';
 
           d3.select(this)
-            .attr('stroke', colors.brand.primary)
+            .attr('stroke', 'white')
             .attr('stroke-width', 1.2)
             .attr('opacity', 0.95);
 
@@ -196,7 +183,7 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
         })
         .on('mouseleave', function(this: any) {
           d3.select(this)
-            .attr('stroke', isDark ? colors.border : '#cbd5e1')
+            .attr('stroke', 'rgba(0,0,0,.35)')
             .attr('stroke-width', 0.5)
             .attr('opacity', 1);
           hideTooltip();
@@ -231,155 +218,99 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
     }
   };
 
-  // 서버 사이드 렌더링 시 로딩 상태 유지
-  if (!mounted || loading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div 
-            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
-            style={{ borderColor: colors.brand.primary }}
-          ></div>
-          <p style={{ color: colors.text.quaternary }}>
-            세계 지도 데이터를 불러오는 중...
-          </p>
-        </div>
-      </div>
+      <Card className={className}>
+        <CardContent className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">세계 지도 데이터를 불러오는 중...</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center" style={{ color: colors.brand.danger }}>
-          <p className="text-lg font-semibold mb-2">오류가 발생했습니다</p>
-          <p className="text-sm">{error}</p>
-        </div>
-      </div>
+      <Card className={className}>
+        <CardContent className="flex items-center justify-center h-96">
+          <div className="text-center text-red-500">
+            <p className="text-lg font-semibold mb-2">오류가 발생했습니다</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
+  // 상위 10개 국가 정렬
+  const topCountries = Array.from(data.entries())
+    .map(([iso3, obj]) => ({ iso3, ...obj }))
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 10);
+
   return (
     <>
-      {/* 범례 */}
-      <div className="flex items-center gap-2 text-sm flex-wrap mb-4">
-        <span 
-          className="font-semibold transition-colors duration-300"
-          style={{ color: colors.text.primary }}
-        >
-          Cheated(%)
-        </span>
-        {[10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((value) => {
-          const color = value === 10 ? '#c7f9cc' : 
-                       value === 55 ? '#0b3c8a' : 
-                       `hsl(${200 - (value * 1.5)}, 70%, ${60 - (value * 0.3)}%)`;
-          return (
-            <div key={value} className="flex items-center gap-1">
-              <div 
-                className="w-4 h-4 rounded-full border transition-all duration-300"
-                style={{ 
-                  backgroundColor: color,
-                  borderColor: colors.border
-                }}
-              />
-              <span style={{ color: colors.text.quinary }}>{value}%</span>
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">🌍 세계 국가별 바람지수 2025</CardTitle>
+          <p className="text-gray-600">
+            나라별 바람 지수(자기보고형 설문 %). 파란색이 진할수록 비율이 높습니다. 순위에 들지 않은 국가는 회색으로 표시됩니다.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* 범례 */}
+            <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
+              <span className="font-semibold text-gray-900">{"Cheated(%)"}</span>
+              {[10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((value) => {
+                const color = value === 10 ? '#c7f9cc' : 
+                             value === 55 ? '#0b3c8a' : 
+                             `hsl(${200 - (value * 1.5)}, 70%, ${60 - (value * 0.3)}%)`;
+                return (
+                  <div key={value} className="flex items-center gap-1">
+                    <div 
+                      className="w-4 h-4 rounded-full border border-gray-300"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span>{value}%</span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
 
-      {/* 지도 */}
-      <div 
-        className="rounded-lg p-4 h-[600px] w-full transition-all duration-300 flex justify-center items-center"
-        style={{
-          backgroundColor: isDark ? colors.background.icon : colors.background.primary,
-          border: `1px solid ${colors.border}`,
-          minHeight: '600px'
-        }}
-      >
-        <div className="w-full h-full flex justify-center items-center">
-          <svg 
-            ref={svgRef}
-            className="w-full h-full max-w-full"
-            role="img" 
-            aria-label="World choropleth map of infidelity rates"
-            style={{ 
-              minWidth: '100%',
-              maxWidth: '100%',
-              minHeight: '600px'
-            }}
-          />
-        </div>
-      </div>
+            {/* 지도 */}
+            <div className="bg-gray-50 rounded-lg p-4 h-[600px] w-full">
+              <svg 
+                ref={svgRef}
+                className="w-full h-full"
+                role="img" 
+                aria-label="World choropleth map of infidelity rates"
+                style={{ minHeight: '600px' }}
+              />
+            </div>
 
-      {/* 순위표 토글 버튼 */}
-      {onToggleRankings && (
-        <div className="mt-6">
-          <Button
-            onClick={onToggleRankings}
-            className="w-full transition-all duration-300 hover:scale-105"
-            style={{
-              backgroundColor: colors.background.button,
-              color: colors.text.primary,
-              border: `1px solid ${colors.border}`
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = colors.background.buttonHover;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = colors.background.button;
-            }}
-          >
-            <span className="flex items-center gap-2">
-              {showRankings ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              {showRankings ? '세계 순위 숨기기' : '세계 순위 보기'}
-            </span>
-          </Button>
-        </div>
-      )}
-
-      {/* 순위표 */}
-      {showRankings && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-3" style={{ color: colors.text.primary }}>
-            세계 국가별 순위
-          </h3>
-          <div 
-            className="rounded-lg overflow-hidden transition-all duration-300"
-            style={{
-              backgroundColor: isDark ? colors.background.icon : colors.background.primary,
-              border: `1px solid ${colors.border}`
-            }}
-          >
-            <table className="w-full">
-              <thead>
-                <tr style={{ backgroundColor: colors.background.tertiary }}>
-                  <th className="text-left p-3 font-semibold transition-colors duration-300" style={{ color: colors.text.primary }}>
-                    국가
-                  </th>
-                  <th className="text-left p-3 font-semibold transition-colors duration-300" style={{ color: colors.text.primary }}>
-                    바람지수
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from(data.values())
-                  .sort((a, b) => a.rank - b.rank)
-                  .slice(0, 15) // 상위 15개만 표시
-                  .map((country, index) => {
-                    const iso2 = ISO3_TO_A2[Object.keys(countryData).find(key => countryData[key as keyof typeof countryData].name === country.name) || ''];
-                    return (
-                      <tr 
-                        key={country.name} 
-                        className="border-t transition-all duration-300 hover:scale-105"
-                        style={{ borderColor: colors.border }}
-                      >
-                        <td className="p-3 transition-colors duration-300" style={{ color: colors.text.primary }}>
+            {/* 순위표 */}
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-3">상위 국가 순위</h3>
+              <div className="bg-gray-50 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="text-left p-3 font-semibold text-gray-700 w-[70%]">국가</th>
+                      <th className="text-left p-3 font-semibold text-gray-700 w-[30%]">바람지수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topCountries.map((country, index) => (
+                      <tr key={country.iso3} className="border-t border-gray-200 hover:bg-gray-50">
+                        <td className="p-3">
                           <div className="flex items-center gap-3">
-                            {iso2 && (
+                            {ISO3_TO_A2[country.iso3] && (
                               <img 
                                 className="w-5 h-4 rounded border border-gray-300"
-                                src={`https://flagcdn.com/w20/${iso2}.png`}
+                                src={`https://flagcdn.com/w20/${ISO3_TO_A2[country.iso3]}.png`}
                                 alt={`${country.name} flag`}
                                 loading="lazy"
                               />
@@ -388,36 +319,28 @@ export function WorldInfidelityMap({ showRankings = false, onToggleRankings, cla
                           </div>
                         </td>
                         <td className="p-3">
-                          <Badge 
-                            variant="secondary"
-                            style={{
-                              backgroundColor: colors.brand.primary,
-                              color: '#ffffff'
-                            }}
-                          >
-                            {country.value}%
+                          <Badge variant="secondary">
+                            {Math.round(country.value)}%
                           </Badge>
                         </td>
                       </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="p-3 text-xs text-gray-500 bg-gray-100">
+                  참고: 표는 <strong>Rank</strong> 오름차순으로 정렬되며, <strong>국가</strong>와 <strong>바람지수</strong>만 표시합니다. (국기 아이콘 포함)
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
       {/* 툴팁 */}
       <div
         id="world-tooltip"
-        className="fixed pointer-events-none p-3 rounded-lg text-sm opacity-0 transition-all duration-200 z-50 border shadow-lg"
-        style={{ 
-          maxWidth: '200px', 
-          transform: 'translateY(4px)',
-          backgroundColor: isDark ? '#0b1220' : '#ffffff',
-          borderColor: isDark ? '#1f2937' : '#e5e7eb',
-          color: isDark ? '#e2e8f0' : '#1f2937'
-        }}
+        className="fixed pointer-events-none bg-gray-900 text-white p-3 rounded-lg text-sm opacity-0 transition-all duration-200 z-50 border border-gray-700 shadow-lg"
+        style={{ maxWidth: '200px', transform: 'translateY(4px)' }}
       />
     </>
   );
