@@ -1,0 +1,103 @@
+---
+globs: *.tsx,*.css
+alwaysApply: false
+---
+
+# Tailwind CSS v4 Styling Guide
+
+## CSS Import Syntax
+
+```css
+/* Use v4 syntax in globals.css */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* CSS variables for theming */
+:root {
+  --primary: 0.205 0 0;
+  --secondary: 0.97 0 0;
+  --background: 1 0 0;
+  --foreground: 0.145 0 0;
+}
+```
+
+## Color System
+
+- Use CSS variables for consistent theming
+- Prefer semantic color names over arbitrary values
+- Use oklch color space for better color representation
+
+## Component Styling
+
+```tsx
+// Use semantic class combinations
+<div className="bg-background text-foreground border border-border rounded-lg p-6 shadow-sm">
+  <h2 className="text-2xl font-semibold text-foreground mb-4">
+    Component Title
+  </h2>
+  <p className="text-muted-foreground leading-relaxed">Component description</p>
+</div>
+```
+
+## Responsive Design
+
+- Mobile-first approach
+- Use responsive prefixes: `sm:`, `md:`, `lg:`, `xl:`
+- Test on multiple screen sizes
+
+## Animation Classes
+
+```tsx
+// Use custom animation classes
+<motion.div
+  className="animate-fade-in animate-slide-up"
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.5 }}
+>
+  Animated content
+</motion.div>
+```
+
+## Dark Mode Support
+
+```css
+/* Use CSS variables for dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 0.145 0 0;
+    --foreground: 0.985 0 0;
+  }
+}
+```
+
+## Utility Classes
+
+- Prefer utility classes over custom CSS
+- Use `@apply` directive for complex component styles
+- Keep component styles in `@layer components`
+
+## Example Component Styling
+
+```tsx
+export default function StyledComponent() {
+  return (
+    <div
+      className="
+      bg-white dark:bg-gray-900
+      border border-gray-200 dark:border-gray-700
+      rounded-lg shadow-lg
+      p-6 space-y-4
+      transition-colors duration-200
+    "
+    >
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        Styled Title
+      </h3>
+      <p className="text-gray-600 dark:text-gray-300">
+        Styled description with proper contrast
+      </p>
+    </div>
+  );
+}
+```

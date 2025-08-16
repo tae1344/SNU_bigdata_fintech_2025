@@ -1,0 +1,115 @@
+---
+alwaysApply: true
+---
+
+# Development Workflow
+
+## Project Setup
+
+1. **Environment**: Node.js 18+ with npm
+2. **Package Manager**: npm (use `npm install` not `yarn`)
+3. **Virtual Environment**: Activate `taeya_python_env3.13` for any Python scripts
+4. **IDE**: Use Cursor with these rules
+
+## File Naming Conventions
+
+- **Components**: PascalCase (e.g., `FilterStepper.tsx`)
+- **Files**: kebab-case (e.g., `filter-stepper.tsx`)
+- **Directories**: kebab-case (e.g., `feature-engineering/`)
+- **Types**: PascalCase (e.g., `Filters`, `ScoreResult`)
+
+## Import/Export Patterns
+
+```typescript
+// Component exports
+export { default as ComponentName } from "./ComponentName";
+
+// Type exports
+export type { ComponentProps } from "./types";
+
+// Utility exports
+export { utilityFunction } from "./utils";
+
+// Index file pattern
+export * from "./ComponentName";
+export * from "./types";
+```
+
+## Code Organization
+
+```typescript
+// File structure order
+"use client"; // 1. Client directive
+import React from "react"; // 2. React imports
+import { external } from "lib"; // 3. External libraries
+import { internal } from "@/"; // 4. Internal imports
+
+// 5. Types and interfaces
+interface Props {}
+
+// 6. Component definition
+export default function Component({ prop }: Props) {
+  // 7. Hooks
+  const { state } = useStore();
+
+  // 8. Event handlers
+  const handleAction = () => {};
+
+  // 9. Render
+  return <div />;
+}
+```
+
+## Git Workflow
+
+- **Branch Naming**: `feature/component-name`, `fix/issue-description`
+- **Commit Messages**: Conventional Commits format
+- **PR Template**: Use provided template with checklist
+- **Review**: Self-review before requesting review
+
+## Testing Strategy
+
+- **Unit Tests**: Jest + React Testing Library
+- **E2E Tests**: Playwright for critical user flows
+- **Component Tests**: Test props, state changes, user interactions
+- **Accessibility**: Test with screen readers and keyboard navigation
+
+## Performance Guidelines
+
+- **Bundle Size**: Keep components under 50KB
+- **Lazy Loading**: Use dynamic imports for large components
+- **Image Optimization**: Use Next.js Image component
+- **Code Splitting**: Implement route-based code splitting
+
+## Error Handling
+
+```typescript
+// Always handle errors gracefully
+try {
+  const result = await riskyOperation();
+  return result;
+} catch (error) {
+  console.error("Operation failed:", error);
+  // Show user-friendly error message
+  return fallbackValue;
+}
+
+// Use error boundaries for React errors
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <Component />
+</ErrorBoundary>;
+```
+
+## Documentation
+
+- **README**: Update with new features
+- **Component Props**: Document all props with examples
+- **API Changes**: Document breaking changes
+- **Changelog**: Keep track of version changes
+
+## Code Quality
+
+- **ESLint**: Fix all linting errors before commit
+- **Prettier**: Use consistent formatting
+- **TypeScript**: Strict mode enabled, no `any` types
+- **Accessibility**: Follow WCAG 2.1 AA guidelines

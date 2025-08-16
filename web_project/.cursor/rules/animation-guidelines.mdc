@@ -1,0 +1,189 @@
+---
+globs: *.tsx
+alwaysApply: false
+---
+
+# Animation Guidelines with Framer Motion
+
+## Basic Animation Setup
+
+```tsx
+import { motion, useMotionValue, useTransform } from "motion" // motion is framer-motion;
+
+export default function AnimatedComponent() {
+  // Motion values for dynamic animations
+  const mv = useMotionValue(0);
+  const x = useTransform(mv, (v) => v * 100);
+  const scale = useTransform(mv, (v) => 1 + v * 0.2);
+
+  return (
+    <motion.div
+      animate={{ x: [0, 100, 0] }}
+      transition={{ duration: 2, repeat: Infinity }}
+    >
+      Animated content
+    </motion.div>
+  );
+}
+```
+
+## PRD Animation Requirements
+
+```tsx
+// AvatarScene component with PRD formulas
+export default function AvatarScene({ probability }: { probability: number }) {
+  const p = Math.max(0, Math.min(1, probability));
+
+  // PRD 공식 적용
+  const distance = 80 + 240 * p; // Distance = 80 + 240 * p
+  const speed = 2000 - 1000 * p; // Speed = 2000 - 1000 * p
+  const effectLevel = 1 + Math.floor(2 * p); // Effect Level = 1 + floor(2 * p)
+
+  return (
+    <motion.div
+      className="avatar"
+      style={{ x: distance }}
+      transition={{
+        duration: speed / 1000,
+        ease: "easeOut",
+        type: "spring",
+        stiffness: 100,
+        damping: 10,
+      }}
+      whileHover={{ scale: 1.1 }}
+      animate={{
+        y: [0, -10, 0],
+      }}
+      transition={{
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
+    />
+  );
+}
+```
+
+## Performance Optimization
+
+```tsx
+// Use transform properties for better performance
+<motion.div
+  style={{
+    x: useTransform(mv, v => v * 100),
+    scale: useTransform(mv, v => 1 + v * 0.1),
+  }}
+  // Avoid animating layout properties
+  layout="position"
+/>
+
+// Use willChange for GPU acceleration
+<motion.div
+  style={{ willChange: 'transform' }}
+  animate={{ x: 100 }}
+/>
+```
+
+## Animation Variants
+
+```tsx
+const variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+<motion.div
+  variants={variants}
+  initial="hidden"
+  animate="visible"
+  exit="exit"
+  transition={{ duration: 0.5 }}
+>
+  Content with variants
+</motion.div>;
+```
+
+## Gesture Animations
+
+```tsx
+<motion.div
+  drag="x"
+  dragConstraints={{ left: -100, right: 100 }}
+  dragElastic={0.1}
+  onDragEnd={(event, info) => {
+    // Handle drag end
+  }}
+>
+  Draggable content
+</motion.div>
+```
+
+## Stagger Animations
+
+```tsx
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0 },
+};
+
+<motion.div variants={containerVariants} initial="hidden" animate="visible">
+  {items.map((item, i) => (
+    <motion.div key={i} variants={itemVariants}>
+      {item}
+    </motion.div>
+  ))}
+</motion.div>;
+```
+
+## Animation Triggers
+
+```tsx
+// Scroll-triggered animations
+<motion.div
+  initial={{ opacity: 0, y: 50 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{ once: true, amount: 0.3 }}
+  transition={{ duration: 0.6 }}
+>
+  Scroll-triggered content
+</motion.div>
+
+// Hover animations
+<motion.div
+  whileHover={{ scale: 1.05, rotate: 5 }}
+  whileTap={{ scale: 0.95 }}
+>
+  Interactive content
+</motion.div>
+```
+
+## Accessibility
+
+```tsx
+// Respect user's motion preferences
+import { useReducedMotion } from "framer-motion";
+
+export default function AccessibleAnimation() {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      animate={shouldReduceMotion ? {} : { x: 100 }}
+      transition={{ duration: shouldReduceMotion ? 0 : 0.5 }}
+    >
+      Accessible animation
+    </motion.div>
+  );
+}
+```

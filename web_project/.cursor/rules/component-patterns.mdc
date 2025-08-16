@@ -1,0 +1,110 @@
+---
+globs: *.tsx
+alwaysApply: false
+---
+
+# Component Patterns
+
+## Component Structure
+
+```tsx
+"use client";
+
+import React from "react";
+import { useStore } from "@/store/useStore";
+import { ComponentProps } from "@/types";
+
+interface Props {
+  // Props definition
+}
+
+export default function ComponentName({ prop1, prop2 }: Props) {
+  // Hooks and state
+  const { state, action } = useStore();
+
+  // Event handlers
+  const handleAction = () => {
+    // Handler logic
+  };
+
+  // Render
+  return <div className="component-container">{/* Component content */}</div>;
+}
+```
+
+## Section Components
+
+- Place in `src/components/sections/`
+- Use descriptive names ending with "Section"
+- Handle their own state and logic
+- Accept callbacks for navigation
+
+## shadcn ui Components
+
+- Place in `src/components/ui/`
+- Use shadcn/ui patterns
+- Keep them generic and reusable
+- Export from `src/components/index.ts`
+
+## Other Components
+
+- Place in `src/components/`
+- Use first of all shadcn/ui components when Create or Refact components
+- Keep them generic and reusable
+- Export from `src/components/index.ts`
+
+## Props Interface
+
+```tsx
+interface ComponentProps {
+  // Required props first
+  title: string;
+  data: DataType;
+
+  // Optional props with defaults
+  variant?: "default" | "outline" | "ghost";
+  size?: "sm" | "md" | "lg";
+
+  // Event handlers
+  onClick?: () => void;
+  onChange?: (value: string) => void;
+
+  // Children
+  children?: React.ReactNode;
+
+  // Styling
+  className?: string;
+}
+```
+
+## State Management
+
+- Use Zustand for global state
+- Use local state for component-specific data
+- Avoid prop drilling
+- Keep state updates minimal
+
+## Error Boundaries
+
+```tsx
+// Wrap critical sections
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <CriticalComponent />
+</ErrorBoundary>
+```
+
+## Loading States
+
+```tsx
+// Always handle loading states
+{
+  isLoading ? <LoadingSpinner /> : <ComponentContent />;
+}
+```
+
+## Accessibility
+
+- Use semantic HTML elements
+- Add ARIA labels where needed
+- Ensure keyboard navigation
+- Test with screen readers

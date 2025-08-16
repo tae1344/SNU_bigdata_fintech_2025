@@ -1,0 +1,71 @@
+---
+globs: *.tsx,*.ts
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## Type Definitions
+
+- Define types in `src/types/` directory
+- Use descriptive names for types and interfaces
+- Export types from `src/types/index.ts`
+- Prefer interfaces over types for object shapes
+
+## Component Props
+
+```typescript
+interface ComponentProps {
+  // Required props first
+  requiredProp: string;
+
+  // Optional props with default values
+  optionalProp?: number;
+
+  // Event handlers
+  onAction: (data: ActionData) => void;
+
+  // Children
+  children?: React.ReactNode;
+}
+```
+
+## State Management Types
+
+- Use Zustand store types from `src/store/useStore.ts`
+- Define action types clearly
+- Use discriminated unions for complex state
+
+## Import/Export
+
+- Use named exports for components
+- Use default exports sparingly
+- Group imports: React, external libraries, internal modules
+- Use absolute imports with `@/` alias
+
+## Error Handling
+
+- Use proper error types
+- Handle async operations with try-catch
+- Use Result pattern for complex operations
+
+## Example Component
+
+```typescript
+"use client";
+
+import React from "react";
+import { useStore } from "@/store/useStore";
+import { ComponentProps } from "@/types";
+
+export default function ExampleComponent({ title, onAction }: ComponentProps) {
+  const { state, action } = useStore();
+
+  return (
+    <div className="example-component">
+      <h2>{title}</h2>
+      <button onClick={() => onAction(state.data)}>Action</button>
+    </div>
+  );
+}
+```

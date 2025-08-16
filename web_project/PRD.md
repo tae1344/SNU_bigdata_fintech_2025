@@ -58,6 +58,7 @@
    - Step 1: `rate_marriage`, `age`, `yrs_married`
    - Step 2: `children`, `religious`
    - Step 3: `educ`, `occupation`, `occupation_husb`
+   - Progressing
 3. **결과**
    - 게이지 점수 + 텍스트
    - 영향 요인 TOP3
@@ -115,7 +116,9 @@ score = round(p * 100)
 
 ### 7. 아키텍처 & 기술 스택
 
-- FE: Next.js 15, TypeScript, Tailwind, Recoil, Framer Motion, Recharts
+- FE: Next.js 15, TypeScript, Tailwind, Framer Motion, Recharts
+- style: shadcn ui
+- 상태 관리: zustand
 - 점수 로직: 로컬 스크립트(scoring.ts) 또는 API 호출
 
 ### 8. 데이터모델
@@ -131,6 +134,7 @@ type ScoreResult = {
 
 ### 9. 화면 설계 주요 포인트
 
+- one page 구조
 - 설문 화면: 직관적 아이콘/슬라이더/드롭다운
 - 결과 화면: 게이지 중앙 배치, 아바타 씬 아래 배치
 - 비교 모드: 두 카드 나란히

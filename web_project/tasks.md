@@ -55,7 +55,7 @@
 
 - [x] Next.js 15 + TypeScript 초기 세팅
 - [x] TailwindCSS + shadcn/ui 적용
-- [ ] 상태 관리 라이브러리(Recoil) 세팅
+- [ ] 상태 관리 라이브러리(Zustand) 세팅
 - [ ] ESLint + Prettier + Husky 구성
 - [ ] 다국어 지원 설정 (한국어/영어)
 - [ ] 다크모드 지원 설정

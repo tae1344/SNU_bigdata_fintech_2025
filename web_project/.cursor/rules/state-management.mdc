@@ -1,0 +1,123 @@
+---
+globs: *.tsx,*.ts
+alwaysApply: false
+---
+
+# State Management with Zustand
+
+## Store Structure
+
+```typescript
+// src/store/useStore.ts
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+
+export type AppState = {
+  // State properties
+  currentStep: "landing" | "filters" | "result" | "compare";
+  filters: Filters;
+  result: ScoreResult | null;
+};
+
+export type AppActions = {
+  // Actions
+  setCurrentStep: (step: AppState["currentStep"]) => void;
+  updateFilter: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
+  setResult: (result: ScoreResult) => void;
+};
+
+export type AppStore = AppState & AppActions;
+
+export const useStore = create<AppStore>()(
+  devtools(
+    (set, get) => ({
+      // Initial state
+      currentStep: "landing",
+      filters: initialFilters,
+      result: null,
+
+      // Actions
+      setCurrentStep: (step) => set({ currentStep: step }),
+      updateFilter: (key, value) =>
+        set((state) => ({
+          filters: { ...state.filters, [key]: value },
+        })),
+      setResult: (result) => set({ result }),
+    }),
+    { name: "app-store" }
+  )
+);
+```
+
+## Using Store in Components
+
+```tsx
+import { useStore } from "@/store/useStore";
+
+export default function Component() {
+  // Select specific state
+  const currentStep = useStore((state) => state.currentStep);
+  const filters = useStore((state) => state.filters);
+
+  // Select actions
+  const { setCurrentStep, updateFilter } = useStore();
+
+  // Use in component
+  return (
+    <div>
+      <p>Current step: {currentStep}</p>
+      <button onClick={() => setCurrentStep("filters")}>Go to Filters</button>
+    </div>
+  );
+}
+```
+
+## State Updates
+
+- Use `set` for simple updates
+- Use `get` to access current state in actions
+- Keep actions pure and predictable
+- Use immer for complex state updates if needed
+
+## Store Organization
+
+- Group related state and actions together
+- Use descriptive names for actions
+- Keep state structure flat when possible
+- Separate concerns into different stores if needed
+
+## Performance Optimization
+
+```tsx
+// Use selectors to prevent unnecessary re-renders
+const expensiveValue = useStore(
+  useCallback((state) => computeExpensiveValue(state.data), [])
+);
+
+// Use shallow comparison for objects
+const { filters } = useStore((state) => ({ filters: state.filters }), shallow);
+```
+
+## Middleware
+
+- Use `devtools` for development debugging
+- Use `persist` for state persistence if needed
+- Use `immer` for immutable updates
+- Use `subscribeWithSelector` for fine-grained subscriptions
+
+## Example: Filter Management
+
+```tsx
+// Store action
+updateFilter: (key, value) =>
+  set((state) => ({
+    filters: { ...state.filters, [key]: value }
+  })),
+
+// Component usage
+const { updateFilter } = useStore();
+
+const handleFilterChange = (key: keyof Filters, value: any) => {
+  updateFilter(key, value);
+};
+```
