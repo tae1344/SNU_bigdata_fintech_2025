@@ -20,6 +20,12 @@ export default function MainPage() {
 
   const {loading, setLoading } = useStore();
 
+  // 스텝 변경 시 스크롤을 상단으로 이동
+  const handleStepChange = (newStep: number) => {
+    setCurrentStep(newStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {  
       setLoading(false);
@@ -127,9 +133,6 @@ export default function MainPage() {
       {loading ? (
           <>
             <Loading />
-            <div className="fixed top-20 right-4 bg-red-500 text-white p-2 rounded z-50">
-              Loading: {String(loading)}
-            </div>
           </>
         ) : (
           <>
@@ -164,18 +167,26 @@ export default function MainPage() {
                 style={{ color: colors.text.primary }}
               >
                 {steps.map((step, index) => (
-                  <span 
+                  <button
                     key={index} 
-                    className={`font-medium transition-all duration-300 ${
+                    onClick={() => handleStepChange(index)}
+                    className={`font-medium transition-all duration-300 cursor-pointer hover:scale-105 hover:underline ${
                       index <= currentStep ? 'opacity-100' : 'opacity-50'
+                    } ${
+                      index === currentStep ? 'ring-1 ring-opacity-5 ring-white' : ''
                     }`}
                     aria-current={index === currentStep ? 'step' : undefined}
                     style={{
-                      color: index <= currentStep ? colors.text.primary : colors.text.quinary
+                      color: index <= currentStep ? colors.text.primary : colors.text.quinary,
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      padding: '4px 8px',
+                      borderRadius: '6px'
                     }}
+                    disabled={index > currentStep}
                   >
                     {step}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -185,22 +196,22 @@ export default function MainPage() {
               <AnimatePresence mode="wait">
                 {
                   currentStep === 0 && (
-                    <Opening nextStep={() => setCurrentStep(1)} />
+                    <Opening nextStep={() => handleStepChange(1)} />
                   )
                 }
                 {
                   currentStep === 1 && (
-                    <OfficeSelection nextStep={() => setCurrentStep(2)} />
+                    <OfficeSelection nextStep={() => handleStepChange(2)} />
                   )
                 }
                 {
                   currentStep === 2 && (
-                    <TargetSelection nextStep={() => setCurrentStep(3)} />
+                    <TargetSelection nextStep={() => handleStepChange(3)} />
                   )
                 }
                 {
                   currentStep === 3 && (
-                    <InfidelityTest nextStep={() => setCurrentStep(4)} />
+                    <InfidelityTest nextStep={() => handleStepChange(4)} />
                   )
                 }
               </AnimatePresence>
