@@ -1,17 +1,16 @@
 'use client'
-import { Button } from "@/components/ui/button";
+import FranchiseSelection from "@/components/FranchiseSelection";
+import { Loading } from "@/components/Loading";
 import { Progress } from "@/components/ui/progress";
+import { useStore } from "@/store/useStore";
 import { Shield } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
-import Opening from "../components/Opening";
-import OfficeSelection from "../components/OfficeSelection";
-import TargetSelection from "../components/TargetSelection";
 import InfidelityTest from "../components/InfidelityTest";
-import ThemeToggle from "../components/ThemeToggle";
+import OfficeSelection from "../components/OfficeSelection";
+import Opening from "../components/Opening";
+import TargetSelection from "../components/TargetSelection";
 import { useThemeColors } from "../hooks/useThemeColors";
-import { useStore } from "@/store/useStore";
-import { Loading } from "@/components/Loading";
 
 // 메인 페이지 컴포넌트
 export default function MainPage() {
@@ -51,7 +50,7 @@ export default function MainPage() {
           : `linear-gradient(to bottom, ${colors.background.primary}, ${colors.background.secondary})`
       }}
     >
-      <ThemeToggle />
+      {/* <ThemeToggle /> */}
       
       {/* 헤더 */}
       <header 
@@ -71,61 +70,8 @@ export default function MainPage() {
               className="text-xl md:text-2xl font-bold transition-colors duration-300"
               style={{ color: colors.text.primary }}
             >
-              엉덩이 탐정 - 불륜 증거 수집 전문 사설 탐정
+              고양이 탐정 - 불륜 증거 수집 전문 사설 탐정
             </h1>
-          </div>
-          <div className="hidden md:flex gap-2">
-            <Button 
-              variant="secondary" 
-              className="transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: colors.background.button,
-                color: colors.text.primary,
-                border: `1px solid ${colors.border}`
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.background.buttonHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = colors.background.button;
-              }}
-            >
-              데이터 분석
-            </Button>
-            <Button 
-              variant="secondary" 
-              className="transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: colors.background.button,
-                color: colors.text.primary,
-                border: `1px solid ${colors.border}`
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.background.buttonHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = colors.background.button;
-              }}
-            >
-              예측 모델
-            </Button>
-            <Button 
-              variant="secondary" 
-              className="transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: colors.background.button,
-                color: colors.text.primary,
-                border: `1px solid ${colors.border}`
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.background.buttonHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = colors.background.button;
-              }}
-            >
-              인사이트
-            </Button>
           </div>
         </div>
       </header>
@@ -212,6 +158,11 @@ export default function MainPage() {
                 {
                   currentStep === 3 && (
                     <InfidelityTest nextStep={() => handleStepChange(4)} />
+                  )
+                }
+                {
+                  currentStep === 4 && (
+                    <FranchiseSelection nextStep={() => handleStepChange(5)} />
                   )
                 }
               </AnimatePresence>

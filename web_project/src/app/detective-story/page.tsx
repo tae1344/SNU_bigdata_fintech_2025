@@ -532,7 +532,7 @@ export default function DetectiveStoryPage() {
       onKeyDown={handleKeyNavigation}
       tabIndex={0}
       role="main"
-      aria-label="엉덩이 탐정 사업 계획 대시보드"
+      aria-label="고양이 탐정 사업 계획 대시보드"
     >
       {/* 헤더 */}
       <header 
@@ -545,7 +545,7 @@ export default function DetectiveStoryPage() {
           <div className="flex items-center gap-3">
             <Shield style={{ color: COLORS.primary }} aria-hidden="true" />
             <h1 className="text-xl md:text-2xl font-bold" style={{ color: COLORS.text.primary }}>
-              엉덩이 탐정 - 불륜 증거 수집 전문 사설 탐정
+              고양이 탐정 - 불륜 증거 수집 전문 사설 탐정
             </h1>
           </div>
           <div className="hidden md:flex gap-2">
@@ -607,7 +607,7 @@ export default function DetectiveStoryPage() {
                         <div className="mb-6">
                           <Shield size={64} style={{ color: COLORS.primary }} className="mx-auto mb-4" />
                           <h3 className="text-2xl font-bold mb-4" style={{ color: COLORS.text.primary }}>
-                            엉덩이 탐정
+                            고양이 탐정
                           </h3>
                           <p className="text-lg mb-2" style={{ color: COLORS.text.secondary }}>
                             불륜 증거 수집 전문 사설 탐정
@@ -1946,7 +1946,7 @@ export default function DetectiveStoryPage() {
       <footer className="border-t mt-16" style={{ borderColor: COLORS.background.dark, backgroundColor: COLORS.background.medium }}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 text-center">
           <p className="text-sm" style={{ color: COLORS.text.light }}>
-            © 2024 엉덩이 탐정 - 불륜 증거 수집 전문 사설 탐정 | 
+            © 2024 고양이 탐정 - 불륜 증거 수집 전문 사설 탐정 | 
             디자인: Tailwind CSS + Motion + Recharts | 
             데이터 출처: 미국 일반사회조사(GSS) 1972-2022, 24,460개 샘플 기반 분석
           </p>

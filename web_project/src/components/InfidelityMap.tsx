@@ -340,7 +340,7 @@ export function InfidelityMap({ showRankings = false, onToggleRankings, classNam
                         <td className="p-3" style={{ color: colors.text.primary }}>{row.State}</td>
                         <td className="p-3">
                           <Badge variant="secondary">
-                            {Math.round(row.value)}%
+                            {(row.value.toFixed(1))}%
                           </Badge>
                         </td>
                         <td className="p-3">

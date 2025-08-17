@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Trophy } from "lucide-react";
 import { useThemeColors } from "../hooks/useThemeColors";
 
-interface AnswerRevealProps {
+interface OfficeSelectionAnswerRevealProps {
   className?: string;
 }
 
-export default function AnswerReveal({ className }: AnswerRevealProps) {
+export default function OfficeSelectionAnswerReveal({ className }: OfficeSelectionAnswerRevealProps) {
   const { colors, isDark } = useThemeColors();
   const [showAnswer, setShowAnswer] = useState(false);
 
@@ -59,24 +59,34 @@ export default function AnswerReveal({ className }: AnswerRevealProps) {
                 transition={{ duration: 0.5 }}
                 className="space-y-6"
               >
-                <div 
+                 <div 
                   className="p-8 rounded-lg transition-all duration-300"
                   style={{
                     backgroundColor: isDark ? colors.background.icon : colors.background.primary,
                     border: `2px solid ${colors.brand.success}`
                   }}
                 >
-                  <div className="flex items-center justify-center gap-4 mb-6">
-                    <MapPin 
-                      size={48} 
-                      style={{ color: colors.brand.success }}
-                    />
-                    <h3 
-                      className="text-4xl font-bold transition-colors duration-300"
-                      style={{ color: colors.brand.success }}
+                  <div className="flex flex-col items-center justify-center gap-4 mb-6">
+                    <div className="flex items-center justify-center gap-4">
+                      <MapPin 
+                        size={48} 
+                        style={{ color: colors.brand.success }}
+                      />
+                      <div className="text-center flex flex-row items-center">
+                        <h3 
+                          className="text-4xl font-bold transition-colors duration-300"
+                          style={{ color: colors.brand.success }}
+                        >
+                          ALABAMA 🏈
+                        </h3>
+                      </div>
+                    </div>
+                    <p 
+                      className="text-lg transition-colors duration-300"
+                      style={{ color: colors.text.secondary }}
                     >
-                      THAILAND 🇹🇭
-                    </h3>
+                      1위
+                    </p>
                   </div>
                   
                   <div className="grid md:grid-cols-2 gap-6 text-left">
@@ -91,19 +101,13 @@ export default function AnswerReveal({ className }: AnswerRevealProps) {
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.success }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>바람지수:</strong> 50% (세계 1위)
+                            <strong>바람지수:</strong> 20.4% (미국 1위)
                           </span>
                         </li>
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.success }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>관광객 유입:</strong> 연간 4,000만 명+
-                          </span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.success }}></span>
-                          <span style={{ color: colors.text.primary }}>
-                            <strong>경제 규모:</strong> GDP $500B+
+                            <strong>ALABAMA:</strong> 500만 명+ 인구, GDP $250B+
                           </span>
                         </li>
                       </ul>
@@ -120,43 +124,18 @@ export default function AnswerReveal({ className }: AnswerRevealProps) {
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.warning }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>최고 수요:</strong> 세계 1위 바람지수
+                            <strong>최고 수요:</strong> 미국 1위 바람지수
                           </span>
                         </li>
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.warning }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>관광산업 메카:</strong> 다양한 고객층
-                          </span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.warning }}></span>
-                          <span style={{ color: colors.text.primary }}>
-                            <strong>시장 진입 용이:</strong> 낮은 경쟁 환경
+                            <strong>ALABAMA:</strong> 대학 도시(앨라배마 대학교)
                           </span>
                         </li>
                       </ul>
                     </div>
                   </div>
-                </div>
-                
-                <div 
-                  className="p-6 rounded-lg transition-all duration-300"
-                  style={{
-                    backgroundColor: isDark ? colors.background.icon : colors.background.primary,
-                    border: `1px solid ${colors.border}`
-                  }}
-                >
-                  <p 
-                    className="text-lg leading-relaxed transition-colors duration-300"
-                    style={{ color: colors.text.primary }}
-                  >
-                    🎯 <strong>결론:</strong> 태국은 세계 1위 바람지수(50%)와 연간 4,000만 명의 관광객 유입, 
-                    강력한 관광산업을 고려할 때 탐정 사무소 개업에 최적의 지역입니다. 
-                    특히 방콕, 푸켓, 치앙마이 등 주요 도시에서 관광객과 현지인을 대상으로 한 
-                    높은 수요와 낮은 경쟁 환경으로 시장 진입이 용이하며, 
-                    다국적 고객층을 대상으로 한 프리미엄 서비스 제공이 가능합니다.
-                  </p>
                 </div>
               </motion.div>
             )}

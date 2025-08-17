@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useThemeColors } from '../hooks/useThemeColors';
 import Section from "./Section";
 import StatCard from "./StatCard";
+import Image from "next/image";
 
 type OpeningProps = {
   nextStep: () => void;
@@ -34,16 +35,17 @@ export default function Opening({ nextStep }: OpeningProps) {
           >
             <CardContent className="p-8 text-center">
               <div className="mb-6">
-                <Shield 
-                  size={64} 
-                  style={{ color: colors.brand.primary }} 
-                  className="mx-auto mb-4" 
-                />
+                <div className="mb-3">
+                  <div className="w-36 h-36 mx-auto bg-white rounded-full shadow-lg flex items-center justify-center">
+                    <Image src="/images/detective_cat.png" alt="logo" width={80} height={80} className="object-cover" />
+                  </div>
+                </div>
+
                 <h3 
                   className="text-2xl font-bold mb-4 transition-colors duration-300" 
                   style={{ color: colors.text.primary }}
                 >
-                  엉덩이 탐정
+                  고양이 탐정
                 </h3>
                 <p 
                   className="text-lg mb-2 transition-colors duration-300" 

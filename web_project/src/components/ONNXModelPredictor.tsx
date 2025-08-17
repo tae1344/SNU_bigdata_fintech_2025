@@ -1,7 +1,9 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
+import { Calculator } from "lucide-react";
 import { useState } from "react";
+import { useThemeColors } from "../hooks/useThemeColors";
 
 interface UserInput {
   age: number;
@@ -28,6 +30,7 @@ interface ONNXModelPredictorProps {
 }
 
 export default function ONNXModelPredictor({ userInput, onPrediction, onError }: ONNXModelPredictorProps) {
+  const { colors } = useThemeColors();
   const [isLoading, setIsLoading] = useState(false);
   const [testResult, setTestResult] = useState<string>('');
 
@@ -132,17 +135,22 @@ export default function ONNXModelPredictor({ userInput, onPrediction, onError }:
       <Button
         onClick={testModel}
         disabled={isLoading}
-        variant="outline"
-        size="sm"
-        className="w-full"
+        className="px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 disabled:opacity-50 w-full"
+        style={{
+          backgroundColor: colors.brand.primary,
+          color: '#ffffff'
+        }}
       >
         {isLoading ? (
           <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-            ONNX 모델 테스트 중...
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+            AI 모델 분석 중...
           </>
         ) : (
-          '🔍 ONNX 모델 테스트'
+          <>
+            <Calculator className="w-5 h-5 mr-2" />
+            AI 모델로 위험도 분석하기
+          </>
         )}
       </Button>
       

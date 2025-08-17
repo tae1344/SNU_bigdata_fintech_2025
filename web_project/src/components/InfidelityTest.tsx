@@ -9,6 +9,9 @@ import { AlertCircle, Calculator, Heart, Shield, TrendingUp, Users } from "lucid
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useThemeColors } from "../hooks/useThemeColors";
+import { affairRates } from "../data/affair_rate";
+import Image from "next/image";
+import ONNXModelPredictor from "./ONNXModelPredictor";
 
 type InfidelityTestProps = {
   nextStep: () => void;
@@ -32,6 +35,10 @@ interface PredictionResult {
   riskLevel: 'low' | 'medium' | 'high';
   factors: string[];
   recommendations: string[];
+  model_confidence?: 'high' | 'medium' | 'low'; // 모델 신뢰도 추가
+  error?: string; // 에러 처리 추가
+  fallback?: boolean; // 폴백 사용 여부
+  fallback_reason?: string; // 폴백 사유
 }
 
 export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
@@ -49,9 +56,21 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
   });
 
   const [showResult, setShowResult] = useState(false);
-  const [isCalculating, setIsCalculating] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  
+  // ONNX 모델 예측 결과를 저장할 state
+  const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
 
-  // GSS 데이터 기반 예측 모델 (규칙 기반)
+  // 🆕 최종 예측 결과 반환 함수 (모델 예측 우선, 없으면 규칙 기반)
+  const getFinalPrediction = (): PredictionResult => {
+    if (predictionResult && !predictionResult.error) {
+      return predictionResult;
+    }
+    return calculatePrediction;
+  };
+
+  // GSS 데이터 기반 예측 모델 (간단한 규칙 기반)
   const calculatePrediction = useMemo((): PredictionResult => {
     let baseProbability = 17.77; // GSS 데이터의 전체 불륜률
     
@@ -128,20 +147,119 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
     };
   }, [userInput]);
 
-  const handleInputChange = (field: keyof UserInput, value: string | number) => {
-    setUserInput(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // 불륜률에 따른 유형 분류
+  const getAffairType = (probability: number) => {
+    return affairRates.find(type => 
+      probability >= type.rate[0] && probability <= type.rate[1]
+    ) || affairRates[0]; // 기본값
   };
 
-  const handleCalculate = async () => {
-    setIsCalculating(true);
-    // 실제 예측 계산을 시뮬레이션
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsCalculating(false);
-    setShowResult(true);
+  // 🆕 최종 예측 결과 사용
+  const finalPrediction = getFinalPrediction();
+  const affairType = getAffairType(finalPrediction.probability);
+
+  // 전체 validation 체크
+  const isFormValid = useMemo(() => {
+    return Object.keys(validationErrors).length === 0;
+  }, [validationErrors]);
+
+  const handleInputChange = (field: keyof UserInput, value: string | number) => {
+    console.log(field, value);
+    // 숫자 필드의 경우 빈 문자열 처리 및 범위 검증
+    if (typeof value === 'string' && ['age', 'yearsmarried', 'children', 'education'].includes(field)) {
+      // 빈 문자열이면 기본값으로 설정
+      if (value === '') {
+        let defaultValue: number;
+        // switch (field) {
+        //   // case 'age':
+        //   //   defaultValue = 30;
+        //   //   break;
+        //   // case 'yearsmarried':
+        //   //   defaultValue = 5;
+        //   //   break;
+        //   // case 'children':
+        //   //   defaultValue = 2;
+        //   //   break;
+        //   // case 'education':
+        //   //   defaultValue = 12;
+        //   //   break;
+        //   default:
+        //     defaultValue = 0;
+        // }
+        
+        setUserInput(prev => ({
+          ...prev,
+          [field]: ""
+        }));
+        
+        // // validation 에러 제거
+        // setValidationErrors(prev => {
+        //   const newErrors = { ...prev };
+        //   delete newErrors[field];
+        //   return newErrors;
+        // });
+        // return;
+      }
+      
+      const numValue = parseInt(value);
+      
+      // 숫자가 아닌 경우 무시
+      if (isNaN(numValue)) {
+        return;
+      }
+      
+      // 범위 검증 - 경고 메시지 설정
+      let warningMessage = '';
+      
+      switch (field) {
+        case 'age':
+          if (value == "" || numValue < 18 || numValue > 100) {
+            warningMessage = `나이는 18-100 사이의 값이 권장됩니다. (현재: ${numValue})`;
+          }
+          break;
+        case 'yearsmarried':
+          if (value == "" || numValue < 0 || numValue > 80) {
+            warningMessage = `결혼 연수는 0-80 사이의 값이 권장됩니다. (현재: ${numValue})`;
+          }
+          break;
+        case 'children':
+          if (value == "" || numValue < 0 || numValue > 10) {
+            warningMessage = `자녀 수는 0-10 사이의 값이 권장됩니다. (현재: ${numValue})`;
+          }
+          break;
+        case 'education':
+          if (value == "" || numValue < 8 || numValue > 20) {
+            warningMessage = `교육 수준은 8-20 사이의 값이 권장됩니다. (현재: ${numValue})`;
+          }
+          break;
+      }
+      
+      // validation 에러 설정 또는 제거
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        if (warningMessage) {
+          newErrors[field] = warningMessage;
+        } else {
+          delete newErrors[field];
+        }
+        return newErrors;
+      });
+      
+      // 사용자가 입력한 값을 그대로 설정 (범위 제한 없음)
+      setUserInput(prev => ({
+        ...prev,
+        [field]: numValue
+      }));
+    } else {
+      // 기존 로직 (Select 컴포넌트 등)
+      setUserInput(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
+
+  // handleCalculate 함수는 더 이상 필요하지 않음 (ONNX 모델만 사용)
 
   const getRiskColor = (riskLevel: string) => {
     switch (riskLevel) {
@@ -202,7 +320,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                 className="text-lg transition-colors duration-300 mb-6"
                 style={{ color: colors.text.secondary }}
               >
-                GSS 데이터 기반 머신러닝 모델을 활용한 개인 맞춤형 불륜 위험도 분석
+                🚀 실제 훈련된 머신러닝 모델을 활용한 개인 맞춤형 불륜 위험도 분석
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
@@ -214,7 +332,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                     className="text-sm transition-colors duration-300"
                     style={{ color: colors.text.quaternary }}
                   >
-                    데이터 기반
+                    훈련 데이터
                   </div>
                   <div 
                     className="font-semibold transition-colors duration-300"
@@ -232,13 +350,13 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                     className="text-sm transition-colors duration-300"
                     style={{ color: colors.text.quaternary }}
                   >
-                    정확도
+                    모델 정확도
                   </div>
                   <div 
                     className="font-semibold transition-colors duration-300"
                     style={{ color: colors.text.primary }}
                   >
-                    85.2%
+                    🧠 AI 모델
                   </div>
                 </div>
                 <div className="text-center">
@@ -250,7 +368,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                     className="text-sm transition-colors duration-300"
                     style={{ color: colors.text.quaternary }}
                   >
-                    변수 수
+                    특성 변수
                   </div>
                   <div 
                     className="font-semibold transition-colors duration-300"
@@ -268,13 +386,13 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                     className="text-sm transition-colors duration-300"
                     style={{ color: colors.text.quaternary }}
                   >
-                    모델 타입
+                    최적 모델
                   </div>
                   <div 
                     className="font-semibold transition-colors duration-300"
                     style={{ color: colors.text.primary }}
                   >
-                    Random Forest
+                    XGBoost
                   </div>
                 </div>
               </div>
@@ -330,7 +448,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                       min="18"
                       max="100"
                       value={userInput.age}
-                      onChange={(e) => handleInputChange('age', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange('age', e.target.value)}
                       className="transition-all duration-300"
                       style={{
                         backgroundColor: colors.background.primary,
@@ -338,6 +456,9 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                         color: colors.text.primary
                       }}
                     />
+                    {validationErrors.age && (
+                      <p className="text-sm text-red-500 mt-1">{validationErrors.age}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -389,7 +510,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                       min="0"
                       max="80"
                       value={userInput.yearsmarried}
-                      onChange={(e) => handleInputChange('yearsmarried', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange('yearsmarried', e.target.value)}
                       className="transition-all duration-300"
                       style={{
                         backgroundColor: colors.background.primary,
@@ -397,6 +518,9 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                         color: colors.text.primary
                       }}
                     />
+                    {validationErrors.yearsmarried && (
+                      <p className="text-sm text-red-500 mt-1">{validationErrors.yearsmarried}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -413,7 +537,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                       min="0"
                       max="10"
                       value={userInput.children}
-                      onChange={(e) => handleInputChange('children', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange('children', e.target.value)}
                       className="transition-all duration-300"
                       style={{
                         backgroundColor: colors.background.primary,
@@ -421,6 +545,9 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                         color: colors.text.primary
                       }}
                     />
+                    {validationErrors.children && (
+                      <p className="text-sm text-red-500 mt-1">{validationErrors.children}</p>
+                    )}
                   </div>
                 </div>
 
@@ -485,7 +612,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                       min="8"
                       max="20"
                       value={userInput.education}
-                      onChange={(e) => handleInputChange('education', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange('education', e.target.value)}
                       className="transition-all duration-300"
                       style={{
                         backgroundColor: colors.background.primary,
@@ -493,6 +620,9 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                         color: colors.text.primary
                       }}
                     />
+                    {validationErrors.education && (
+                      <p className="text-sm text-red-500 mt-1">{validationErrors.education}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -573,27 +703,29 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
               </div>
 
               <div className="mt-8 text-center">
-                <Button
-                  onClick={handleCalculate}
-                  disabled={isCalculating}
-                  className="px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 disabled:opacity-50"
-                  style={{
-                    backgroundColor: colors.brand.primary,
-                    color: '#ffffff'
+                {/* ONNX 모델 예측 (메인 버튼) */}
+                <ONNXModelPredictor
+                  userInput={userInput}
+                  onPrediction={(result) => {
+                    // ONNX 모델 결과를 PredictionResult 형식으로 변환
+                    const onnxResult: PredictionResult = {
+                      probability: result.probability,
+                      riskLevel: result.probability < 20 ? 'low' : 
+                                result.probability < 35 ? 'medium' : 'high',
+                      factors: calculatePrediction.factors, // 기존 요인 사용
+                      recommendations: calculatePrediction.recommendations, // 기존 권장사항 사용
+                      model_confidence: 'high',
+                      fallback: false
+                    };
+                    setPredictionResult(onnxResult);
+                    setShowResult(true);
+                    setPredictionError(null);
                   }}
-                >
-                  {isCalculating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      분석 중...
-                    </>
-                  ) : (
-                    <>
-                      <Calculator className="w-5 h-5 mr-2" />
-                      위험도 분석하기
-                    </>
-                  )}
-                </Button>
+                  onError={(error) => {
+                    setPredictionError(error);
+                    console.error('ONNX 모델 오류:', error);
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -629,15 +761,15 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                 </p>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="gap-8">
                   {/* 주요 결과 */}
                   <div className="space-y-6">
                     <div className="text-center">
                       <div 
                         className="text-6xl font-bold mb-2 transition-colors duration-300"
-                        style={{ color: getRiskColor(calculatePrediction.riskLevel) }}
+                        style={{ color: getRiskColor(finalPrediction.riskLevel) }}
                       >
-                        {calculatePrediction.probability}%
+                        {finalPrediction.probability}%
                       </div>
                       <div 
                         className="text-lg transition-colors duration-300"
@@ -651,14 +783,118 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                       <div 
                         className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300"
                         style={{
-                          backgroundColor: getRiskColor(calculatePrediction.riskLevel),
+                          backgroundColor: getRiskColor(finalPrediction.riskLevel),
                           color: '#ffffff'
                         }}
                       >
                         <AlertCircle className="w-4 h-4 mr-2" />
-                        위험도: {getRiskText(calculatePrediction.riskLevel)}
+                        위험도: {getRiskText(finalPrediction.riskLevel)}
                       </div>
                     </div>
+
+                    {/* 유형 분류 추가 */}
+                    <div className="text-center p-4 rounded-lg transition-all duration-300"
+                         style={{
+                           backgroundColor: colors.background.tertiary,
+                           border: `1px solid ${colors.border}`
+                         }}>
+                      <div className="mb-3">
+                        <div className="w-48 h-48 mx-auto bg-white rounded-full shadow-lg flex items-center justify-center">
+                          <Image 
+                            src={affairType.image} 
+                            alt={affairType.name}
+                            width={110}
+                            height={110}
+                            className="object-cover"
+                          />
+                        </div>
+                      </div>
+                      <h4 
+                        className="text-2xl font-bold mb-2 transition-colors duration-300"
+                        style={{ color: colors.text.primary }}
+                      >
+                        {affairType.name}
+                      </h4>
+                      <p 
+                        className="text-lg transition-colors duration-300 leading-relaxed text-left"
+                        style={{ color: colors.text.secondary }}
+                      >
+                        {affairType.description}
+                      </p>
+                    </div>
+
+                    {/* 🆕 모델 신뢰도 및 폴백 정보 표시 */}
+                    <div className="text-center p-3 rounded-lg transition-all duration-300"
+                         style={{
+                           backgroundColor: colors.background.secondary,
+                           border: `1px solid ${colors.border}`
+                         }}>
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Shield 
+                          className="w-5 h-5 transition-colors duration-300"
+                          style={{ color: finalPrediction.fallback ? colors.brand.warning : colors.brand.success }}
+                        />
+                        <span 
+                          className="text-sm font-medium transition-colors duration-300"
+                          style={{ color: colors.text.secondary }}
+                        >
+                          모델 신뢰도: {finalPrediction.model_confidence === 'high' ? '높음' : 
+                                       finalPrediction.model_confidence === 'medium' ? '보통' : '낮음'}
+                        </span>
+                      </div>
+                      
+                      {/* 폴백 정보 표시 */}
+                      {finalPrediction.fallback && (
+                        <div className="text-xs p-2 rounded transition-all duration-300"
+                             style={{
+                               backgroundColor: colors.brand.warning + '20',
+                               border: `1px solid ${colors.brand.warning}`
+                             }}>
+                          <span 
+                            className="transition-colors duration-300"
+                            style={{ color: colors.brand.warning }}
+                          >
+                            ⚠️ 규칙 기반 예측 사용 (AI 모델 로딩 실패)
+                          </span>
+                          {finalPrediction.fallback_reason && (
+                            <div 
+                              className="mt-1 text-xs transition-colors duration-300"
+                              style={{ color: colors.text.quaternary }}
+                            >
+                              사유: {finalPrediction.fallback_reason}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 🆕 에러 메시지 표시 */}
+                    {predictionError && (
+                      <div className="text-center p-3 rounded-lg transition-all duration-300"
+                           style={{
+                             backgroundColor: colors.brand.danger + '20',
+                             border: `1px solid ${colors.brand.danger}`
+                           }}>
+                        <div className="flex items-center justify-center gap-2">
+                          <AlertCircle 
+                            className="w-5 h-5 transition-colors duration-300"
+                            style={{ color: colors.brand.danger }}
+                          />
+                          <span 
+                            className="text-sm font-medium transition-colors duration-300"
+                            style={{ color: colors.brand.danger }}
+                          >
+                            모델 예측 실패: {predictionError}
+                          </span>
+                        </div>
+                        <p 
+                          className="text-xs mt-2 transition-colors duration-300"
+                          style={{ color: colors.text.quaternary }}
+                        >
+                          규칙 기반 예측 결과를 표시합니다
+                        </p>
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       <h4 
@@ -668,8 +904,8 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                         주요 위험 요인
                       </h4>
                       <div className="space-y-2">
-                        {calculatePrediction.factors.length > 0 ? (
-                          calculatePrediction.factors.map((factor, index) => (
+                        {finalPrediction.factors.length > 0 ? (
+                          finalPrediction.factors.map((factor, index) => (
                             <div 
                               key={index}
                               className="flex items-center space-x-2 transition-colors duration-300"
@@ -693,65 +929,15 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                       </div>
                     </div>
                   </div>
-
-                  {/* 권장사항 */}
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <h4 
-                        className="font-semibold transition-colors duration-300"
-                        style={{ color: colors.text.primary }}
-                      >
-                        권장사항
-                      </h4>
-                      <div className="space-y-2">
-                        {calculatePrediction.recommendations.length > 0 ? (
-                          calculatePrediction.recommendations.map((rec, index) => (
-                            <div 
-                              key={index}
-                              className="flex items-center space-x-2 transition-colors duration-300"
-                              style={{ color: colors.text.secondary }}
-                            >
-                              <div 
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: colors.brand.success }}
-                              />
-                              <span>{rec}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div 
-                            className="text-sm transition-colors duration-300"
-                            style={{ color: colors.text.quaternary }}
-                          >
-                            현재 상태를 유지하세요
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 
-                        className="font-semibold transition-colors duration-300"
-                        style={{ color: colors.text.primary }}
-                      >
-                        데이터 출처
-                      </h4>
-                      <div 
-                        className="text-sm space-y-1 transition-colors duration-300"
-                        style={{ color: colors.text.quaternary }}
-                      >
-                        <div>• 미국 일반사회조사(GSS) 1972-2022</div>
-                        <div>• 24,460개 결혼한 사람 샘플</div>
-                        <div>• Random Forest 모델 기반</div>
-                        <div>• 정확도: 85.2%</div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="mt-8 text-center space-x-4">
                   <Button
-                    onClick={() => setShowResult(false)}
+                    onClick={() => {
+                      setShowResult(false);
+                      setPredictionResult(null);
+                      setPredictionError(null);
+                    }}
                     variant="outline"
                     className="transition-all duration-300 hover:scale-105"
                     style={{
