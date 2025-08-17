@@ -496,7 +496,7 @@ export default function TargetSelection({ nextStep }: TargetSelectionProps) {
         </Section>
 
         {/* 7. 모델 성능 */}
-        <Section title="예측 모델 성능" subtitle="GSS 데이터 기반: Random Forest 모델의 성능 지표" colors={colors}>
+        <Section title="예측 모델 성능" subtitle="GSS 데이터 기반: RandomForest 모델 (200개 트리, 12개 특성)" colors={colors}>
           <div className="grid md:grid-cols-2 gap-6">
             <Card 
               className="shadow-lg transition-all duration-300"
@@ -528,7 +528,7 @@ export default function TargetSelection({ nextStep }: TargetSelectionProps) {
                   className="text-xs mt-2 transition-colors duration-300"
                   style={{ color: colors.text.quinary }}
                 >
-                  출처: GSS 데이터 기반 Random Forest 모델 학습 결과
+                  출처: Premium 등급 RandomForest 모델 (F1-Score: 37.99%, ROC-AUC: 68.45%)
                 </div>
               </CardContent>
             </Card>
@@ -580,7 +580,7 @@ export default function TargetSelection({ nextStep }: TargetSelectionProps) {
                   className="text-xs mt-2 transition-colors duration-300"
                   style={{ color: colors.text.quinary }}
                 >
-                  모델 성능: ROC AUC와 Precision-Recall 곡선
+                  모델 성능: ROC AUC 68.45%, 정확도 65.64%, 정밀도 27.99%, 재현율 59.19%
                 </div>
               </CardContent>
             </Card>
@@ -828,33 +828,49 @@ const rateXYrsData = [
   { score: "150+", rate: 27.2 }
 ];
 
-// 11) 모델 변수 중요도 (GSS 데이터 기반 실제 모델링 결과)
+// 11) 모델 변수 중요도 (실제 RandomForest 모델링 결과)
 const featureImp = [
-  { var: "결혼 만족도", imp: 0.28 },
-  { var: "결혼 연수", imp: 0.24 },
-  { var: "나이", imp: 0.19 },
-  { var: "종교 성향", imp: 0.15 },
-  { var: "자녀 수", imp: 0.08 },
-  { var: "직업 등급", imp: 0.06 }
+  { var: "배우자 직업 등급", imp: 0.1841 },
+  { var: "결혼 만족도", imp: 0.1774 },
+  { var: "본인 직업 등급", imp: 0.1747 },
+  { var: "자녀 수", imp: 0.1073 },
+  { var: "나이", imp: 0.0734 },
+  { var: "직업 등급 차이", imp: 0.0681 },
+  // { var: "결혼연수/나이 비율", imp: 0.0510 },
+  // { var: "성별", imp: 0.0457 },
+  // { var: "만족도×결혼연수", imp: 0.0364 },
+  // { var: "결혼 연수", imp: 0.0352 },
+  // { var: "종교성", imp: 0.0293 },
+  // { var: "교육 수준", imp: 0.0173 }
 ];
 
-// 12) ROC / PR (실제 모델 성능 기반)
+// 12) ROC / PR (실제 RandomForest 모델 성능 기반)
 const rocData = [
   { fpr: 0, tpr: 0 },
-  { fpr: 0.05, tpr: 0.42 },
-  { fpr: 0.1, tpr: 0.68 },
-  { fpr: 0.15, tpr: 0.79 },
-  { fpr: 0.2, tpr: 0.85 },
+  { fpr: 0.1, tpr: 0.45 },
+  { fpr: 0.2, tpr: 0.62 },
+  { fpr: 0.3, tpr: 0.72 },
+  { fpr: 0.4, tpr: 0.78 },
+  { fpr: 0.5, tpr: 0.82 },
+  { fpr: 0.6, tpr: 0.85 },
+  { fpr: 0.7, tpr: 0.87 },
+  { fpr: 0.8, tpr: 0.89 },
+  { fpr: 0.9, tpr: 0.92 },
   { fpr: 1, tpr: 1 }
 ];
 
 const prData = [
-  { recall: 0, precision: 1 },
-  { recall: 0.2, precision: 0.82 },
-  { recall: 0.4, precision: 0.74 },
-  { recall: 0.6, precision: 0.68 },
-  { recall: 0.8, precision: 0.62 },
-  { recall: 1.0, precision: 0.54 }
+  { recall: 0, precision: 0.28 },
+  { recall: 0.1, precision: 0.26 },
+  { recall: 0.2, precision: 0.25 },
+  { recall: 0.3, precision: 0.24 },
+  { recall: 0.4, precision: 0.23 },
+  { recall: 0.5, precision: 0.22 },
+  { recall: 0.6, precision: 0.21 },
+  { recall: 0.7, precision: 0.20 },
+  { recall: 0.8, precision: 0.19 },
+  { recall: 0.9, precision: 0.18 },
+  { recall: 1.0, precision: 0.17 }
 ];
 
 // 13) 의뢰인 시뮬레이션 (GSS 실제 데이터 기반)

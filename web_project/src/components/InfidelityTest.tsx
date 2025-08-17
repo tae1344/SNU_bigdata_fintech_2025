@@ -392,7 +392,7 @@ export default function InfidelityTest({ nextStep }: InfidelityTestProps) {
                     className="font-semibold transition-colors duration-300"
                     style={{ color: colors.text.primary }}
                   >
-                    XGBoost
+                    랜덤 포레스트
                   </div>
                 </div>
               </div>
