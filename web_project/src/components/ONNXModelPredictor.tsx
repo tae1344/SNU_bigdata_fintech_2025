@@ -87,9 +87,16 @@ export default function ONNXModelPredictor({ userInput, onPrediction, onError }:
       
       setTestResult('모델 실행 성공! 결과 처리 중...');
       
+      // 결과 구조 디버깅
+      console.log('🔍 ONNX 모델 결과 전체:', results);
+      console.log('🔍 결과 키들:', Object.keys(results));
+      
       // 결과 파싱 (새로운 출력 구조)
       const outputLabel = results.label;
       const outputProbability = results.probabilities;
+      
+      console.log('🔍 outputLabel:', outputLabel);
+      console.log('🔍 outputProbability:', outputProbability);
       
       let prediction = 0;
       let probability = 0;
@@ -97,19 +104,35 @@ export default function ONNXModelPredictor({ userInput, onPrediction, onError }:
       // 예측값 추출 (label)
       if (outputLabel && 'data' in outputLabel) {
         prediction = Number((outputLabel as any).data[0]);
+        console.log('🔍 예측값 추출 성공:', prediction);
+      } else {
+        console.log('❌ outputLabel에서 예측값 추출 실패');
+        console.log('outputLabel 구조:', outputLabel);
       }
       
       // 확률값 추출 (probabilities - 표준 텐서)
       if (outputProbability && 'data' in outputProbability) {
         const probData = (outputProbability as any).data;
-        if (Array.isArray(probData) && probData.length >= 2) {
+        console.log('🔍 probData:', probData);
+        console.log('🔍 probData 타입:', typeof probData);
+        console.log('🔍 probData 길이:', probData.length || '길이 없음');
+        
+        // Float32Array 또는 일반 배열 모두 처리
+        if (probData && (Array.isArray(probData) || probData instanceof Float32Array) && probData.length >= 2) {
           // 클래스 1(불륜)의 확률을 사용
           probability = Number(probData[1]) * 100;
+          console.log('🔍 확률값 추출 성공:', probability);
+        } else {
+          console.log('❌ probData가 올바른 형태가 아님');
         }
+      } else {
+        console.log('❌ outputProbability에서 확률값 추출 실패');
+        console.log('outputProbability 구조:', outputProbability);
       }
       
       // 확률값이 추출되지 않은 경우 기본 계산 사용
       if (probability === 0) {
+        console.log('🔍 확률값이 추출되지 않은 경우 기본 계산 사용');
         probability = estimateProbabilityFromFeatures(inputFeatures, prediction);
       }
       

@@ -77,7 +77,7 @@ export default function OfficeSelectionAnswerReveal({ className }: OfficeSelecti
                           className="text-4xl font-bold transition-colors duration-300"
                           style={{ color: colors.brand.success }}
                         >
-                          ALABAMA 🏈
+                          HAWAII 🌺
                         </h3>
                       </div>
                     </div>
@@ -101,13 +101,13 @@ export default function OfficeSelectionAnswerReveal({ className }: OfficeSelecti
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.success }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>바람지수:</strong> 20.4% (미국 1위)
+                            <strong>불륜률:</strong> 80.56% (미국 1위)
                           </span>
                         </li>
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.success }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>ALABAMA:</strong> 500만 명+ 인구, GDP $250B+
+                            <strong>HAWAII:</strong> 140만 명+ 인구, GDP $100B+
                           </span>
                         </li>
                       </ul>
@@ -124,13 +124,13 @@ export default function OfficeSelectionAnswerReveal({ className }: OfficeSelecti
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.warning }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>최고 수요:</strong> 미국 1위 바람지수
+                            <strong>최고 수요:</strong> 미국 1위 불륜률
                           </span>
                         </li>
                         <li className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.brand.warning }}></span>
                           <span style={{ color: colors.text.primary }}>
-                            <strong>ALABAMA:</strong> 대학 도시(앨라배마 대학교)
+                            <strong>HAWAII:</strong> 관광지, 휴양지, 다문화 환경
                           </span>
                         </li>
                       </ul>
