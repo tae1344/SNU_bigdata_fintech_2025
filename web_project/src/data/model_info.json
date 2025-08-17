@@ -1,0 +1,228 @@
+{
+  "model_info": {
+    "basic": {
+      "model_type": "RandomForestClassifier",
+      "producer": "skl2onnx",
+      "onnx_version": 1,
+      "model_version": 7,
+      "file_path": "/public/model.onnx"
+    },
+    "random_forest_specs": {
+      "n_estimators": 200,
+      "max_depth": 7,
+      "min_samples_leaf": 2,
+      "min_samples_split": 5,
+      "class_weight": "balanced_subsample",
+      "n_features": 12,
+      "random_state": 42
+    },
+    "input_output": {
+      "input": {
+        "name": "float_input",
+        "shape": [1, 12],
+        "type": "float32"
+      },
+      "outputs": [
+        {
+          "name": "label",
+          "shape": [1],
+          "type": "int64",
+          "description": "예측 클래스 (0 또는 1)"
+        },
+        {
+          "name": "probabilities",
+          "shape": [1, 2],
+          "type": "float32",
+          "description": "클래스별 확률 [P(0), P(1)]"
+        }
+      ]
+    },
+    "performance": {
+      "data_quality": "premium",
+      "f1_score": 0.3799,
+      "roc_auc": 0.6845,
+      "accuracy": 0.6564,
+      "precision": 0.2799,
+      "recall": 0.5919
+    },
+    "feature_importance": [
+      {
+        "rank": 1,
+        "name": "occupation_husb_grade6",
+        "importance": 0.1841,
+        "description": "남편 직업 등급"
+      },
+      {
+        "rank": 2,
+        "name": "rating_5",
+        "importance": 0.1774,
+        "description": "결혼 만족도"
+      },
+      {
+        "rank": 3,
+        "name": "occupation_grade6",
+        "importance": 0.1747,
+        "description": "본인 직업 등급"
+      },
+      {
+        "rank": 4,
+        "name": "children",
+        "importance": 0.1073,
+        "description": "자녀 수"
+      },
+      {
+        "rank": 5,
+        "name": "age",
+        "importance": 0.0734,
+        "description": "나이"
+      },
+      {
+        "rank": 6,
+        "name": "occupation_diff",
+        "importance": 0.0681,
+        "description": "직업 등급 차이"
+      },
+      {
+        "rank": 7,
+        "name": "yrs_per_age",
+        "importance": 0.051,
+        "description": "결혼연수/나이 비율"
+      },
+      {
+        "rank": 8,
+        "name": "gender_male",
+        "importance": 0.0457,
+        "description": "성별"
+      },
+      {
+        "rank": 9,
+        "name": "rate_x_yrs",
+        "importance": 0.0364,
+        "description": "만족도×결혼연수"
+      },
+      {
+        "rank": 10,
+        "name": "yearsmarried",
+        "importance": 0.0352,
+        "description": "결혼 연수"
+      },
+      {
+        "rank": 11,
+        "name": "religiousness_5",
+        "importance": 0.0293,
+        "description": "종교성"
+      },
+      {
+        "rank": 12,
+        "name": "education",
+        "importance": 0.0173,
+        "description": "교육 수준"
+      }
+    ],
+    "feature_descriptions": {
+      "age": {
+        "description": "나이",
+        "range": [18, 100],
+        "type": "numeric"
+      },
+      "yearsmarried": {
+        "description": "결혼 연수",
+        "range": [0, 80],
+        "type": "numeric"
+      },
+      "children": {
+        "description": "자녀 수",
+        "range": [0, 10],
+        "type": "numeric"
+      },
+      "religiousness_5": {
+        "description": "종교 활동 빈도",
+        "values": {
+          "1": "무신론적",
+          "2": "거의 무신론적",
+          "3": "보통",
+          "4": "종교적",
+          "5": "매우 종교적"
+        },
+        "type": "categorical"
+      },
+      "education": {
+        "description": "교육 수준",
+        "range": [8, 20],
+        "unit": "년",
+        "type": "numeric"
+      },
+      "occupation_grade6": {
+        "description": "본인 직업 등급",
+        "values": {
+          "1": "하위",
+          "2": "중하위",
+          "3": "중위",
+          "4": "중상위",
+          "5": "상위",
+          "6": "최상위"
+        },
+        "type": "categorical"
+      },
+      "occupation_husb_grade6": {
+        "description": "남편 직업 등급",
+        "values": {
+          "1": "하위",
+          "2": "중하위",
+          "3": "중위",
+          "4": "중상위",
+          "5": "상위",
+          "6": "최상위"
+        },
+        "type": "categorical"
+      },
+      "rating_5": {
+        "description": "결혼 만족도",
+        "values": {
+          "1": "불만족",
+          "3": "보통",
+          "5": "매우 만족"
+        },
+        "type": "categorical"
+      },
+      "gender_male": {
+        "description": "성별",
+        "values": {
+          "0": "여성",
+          "1": "남성"
+        },
+        "type": "binary"
+      },
+      "yrs_per_age": {
+        "description": "결혼연수/나이 비율",
+        "type": "derived",
+        "formula": "yearsmarried / age"
+      },
+      "rate_x_yrs": {
+        "description": "만족도×결혼연수",
+        "type": "derived",
+        "formula": "rating_5 * yearsmarried"
+      },
+      "occupation_diff": {
+        "description": "직업 등급 차이",
+        "type": "derived",
+        "formula": "|occupation_grade6 - occupation_husb_grade6|"
+      }
+    },
+    "conversion_info": {
+      "source_model": "src/data/best_model_best_overall_set.pkl",
+      "conversion_tool": "skl2onnx",
+      "conversion_options": {
+        "zipmap": false,
+        "description": "표준 텐서 출력을 위해 설정"
+      },
+      "compatibility": "onnxruntime-web (웹 브라우저)"
+    },
+    "usage": {
+      "component": "ONNXModelPredictor",
+      "description": "웹 애플리케이션에서 실시간 추론 가능",
+      "input_format": "12개 특성값을 float32 배열로 입력",
+      "output_format": "클래스 예측과 확률값 반환"
+    }
+  }
+}
