@@ -11,6 +11,7 @@ import OfficeSelection from "../components/OfficeSelection";
 import Opening from "../components/Opening";
 import TargetSelection from "../components/TargetSelection";
 import { useThemeColors } from "../hooks/useThemeColors";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // 메인 페이지 컴포넌트
 export default function MainPage() {
