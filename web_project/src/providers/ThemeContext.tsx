@@ -19,13 +19,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // 로컬 스토리지에서 테마 불러오기
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as ColorTheme;
-    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-      setThemeState(savedTheme);
-    } else {
-      // 시스템 테마 감지
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      setThemeState(systemTheme);
-    }
+    // if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+    //   setThemeState(savedTheme);
+    // } else {
+    //   // 시스템 테마 감지
+    //   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    //   setThemeState(systemTheme);
+    // }
+
+    setThemeState('dark');
   }, []);
 
   // 테마 변경 시 로컬 스토리지에 저장
