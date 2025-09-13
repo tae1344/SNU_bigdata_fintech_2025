@@ -1,6 +1,6 @@
 import pandas as pd, numpy as np, lightgbm as lgb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_squared_log_error
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -37,8 +37,9 @@ pre = ColumnTransformer(
 reg = lgb.LGBMRegressor(
     n_estimators=1000,
     learning_rate=0.05,
-    max_depth=-1,
-    num_leaves=63,
+    boosting_type="gbdt",
+    max_depth=-1, # 트리 깊이
+    num_leaves=63, # 리프 노드 수
     subsample=0.8,
     colsample_bytree=0.8,
     random_state=42,
@@ -51,8 +52,13 @@ pipe.fit(X_tr, y_tr)
 
 # 예측
 pred = pipe.predict(X_va)
-rmse = mean_squared_error(y_va, pred)
+rmse = mean_squared_error(y_va, pred)   
 print("RMSE:", rmse)
+
+# RMSLE (스케일 민감도↓, 비율 오차 성격) — 음수 방지 위해 예측값을 0으로 클리핑
+pred_clip = np.clip(pred, 0, None)
+rmsle = np.sqrt(mean_squared_log_error(y_va, pred_clip))
+print("RMSLE:", rmsle)
 
 # 아티팩트 저장
 ART = Path(os.path.join(project_root, "artifacts"))
