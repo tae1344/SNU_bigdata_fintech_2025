@@ -116,7 +116,7 @@ export default function FranchiseSelection({ nextStep }: FranchiseSelectionProps
         <FranchiseAnswerReveal />
 
         {/* 다음 단계 버튼 */}
-        <div className="text-center">
+        {/* <div className="text-center">
           <Button 
             onClick={nextStep}
             className="px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105"
@@ -127,7 +127,7 @@ export default function FranchiseSelection({ nextStep }: FranchiseSelectionProps
           >
             다음 단계로 →
           </Button>
-        </div>
+        </div> */}
       </div>
     </motion.div>
   );
