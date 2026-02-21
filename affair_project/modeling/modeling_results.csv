@@ -1,0 +1,8 @@
+﻿Metric,Value,Description
+Accuracy,0.6546310832025117,전체 예측 중 정확한 예측의 비율
+Precision,0.4746059544658494,부정행위로 예측한 것 중 실제 부정행위의 비율
+Recall,0.6593673965936739,실제 부정행위 중 예측에 성공한 비율
+F1-Score,0.5519348268839104,Precision과 Recall의 조화평균
+ROC AUC,0.720854372654662,모델의 분류 성능 지표 (1에 가까울수록 좋음)
+Best Threshold,0.45999999999999985,최적의 분류 임계값
+Best Model,Random Forest,선택된 최적 모델
